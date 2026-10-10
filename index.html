@@ -140,6 +140,23 @@ details.compra summary::-webkit-details-marker{display:none}
 details.compra .det{padding:0 14px 12px;display:grid;gap:4px;font-size:.88rem;color:var(--muted)}
 details.compra .det div{display:flex;justify-content:space-between;gap:8px}
 
+/* súper vs otros gastos */
+.dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:6px;vertical-align:0}
+.dot.su{background:var(--accent)} .dot.ot{background:var(--info)}
+.split{display:flex;flex-wrap:wrap;gap:6px 16px;font-size:.85rem;color:var(--muted);font-variant-numeric:tabular-nums}
+.bar .col .stack{display:flex;flex-direction:column;width:100%;border-radius:6px 6px 2px 2px;overflow:hidden}
+.bar .col .stack i,.bar.now .col .stack i{min-height:0;border-radius:0}
+.bar .col .stack i.su,.bar.now .col .stack i.su{background:var(--accent)}
+.bar .col .stack i.ot,.bar.now .col .stack i.ot{background:var(--info)}
+.bar.now span{color:var(--ink);font-weight:700}
+.hbar .track i.ot{background:var(--info)}
+.acc-row{display:flex;gap:8px;justify-content:flex-end;padding-top:6px}
+.wrapchips{flex-wrap:wrap;overflow:visible;padding:2px 0}
+.field-lbl{font-size:.82rem;font-weight:700;color:var(--muted)}
+.field input.monto{font:800 1.8rem var(--f-display);padding:10px 12px;font-variant-numeric:tabular-nums}
+.hbar{grid-template-columns:minmax(0,120px) minmax(0,1fr) auto}
+.hbar > span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
 /* historial en el editor */
 .hist{display:grid;gap:6px;font-size:.88rem}
 .hist-row{display:flex;justify-content:space-between;gap:8px;color:var(--muted)}
@@ -467,6 +484,23 @@ dialog::backdrop{background:rgba(0,0,0,.45)}
       <button class="btn ghost" type="button" id="rapCerrar">Listo</button>
     </div>
   </div>
+</dialog>
+
+<!-- Gasto general -->
+<dialog id="dlgGasto">
+  <form class="sheet" id="frmGasto">
+    <h3 id="gTitulo">Nuevo gasto</h3>
+    <label class="field"><span>Cuánto ($)</span><input id="g-monto" class="monto" type="number" min="0" step="any" inputmode="decimal" placeholder="0" autocomplete="off"></label>
+    <div class="field"><span>En qué fue</span><div class="chips wrapchips" id="gRubros"></div></div>
+    <label class="field"><span>Detalle (opcional)</span><input id="g-detalle" placeholder="Ej: Edenor septiembre, cumple de Juan" autocomplete="off"></label>
+    <label class="field"><span>Fecha</span><input id="g-fecha" type="date"></label>
+    <div id="gRepetir" class="field"></div>
+    <div class="err" id="gErr" hidden></div>
+    <div class="sheet-actions">
+      <button class="btn ghost" type="button" id="gCancelar">Cancelar</button>
+      <button class="btn" type="submit">Guardar gasto</button>
+    </div>
+  </form>
 </dialog>
 
 <!-- Cerrar compra -->
@@ -984,24 +1018,49 @@ function textoLista() {
 }
 
 /* ---------- gastos ---------- */
+const RUBROS = ["Alquiler", "Expensas", "Luz", "Gas", "Agua", "Internet y celular", "Transporte y nafta", "Salud", "Educación", "Salidas y delivery", "Ropa", "Mascotas", "Hogar y arreglos", "Impuestos", "Otros"];
+const esGasto = c => c.tipo === "gasto";
+const corto = n => n >= 1e6 ? "$" + (n / 1e6).toLocaleString("es-AR", { maximumFractionDigits: 1 }) + "M" : n >= 1e3 ? "$" + Math.round(n / 1e3) + "k" : "$" + Math.round(n);
+const rubroDe = c => esGasto(c) ? (c.rubro || "Otros") : "Súper";
+const fechaCorta = t => new Date(ms(t)).toLocaleDateString("es-AR", { weekday: "short", day: "numeric", month: "short" });
+let borrarCompraId = null;
+
 function renderGastos() {
+  if (document.activeElement?.id === "presupuesto") return;   // no pisar lo que se está escribiendo
   const ahora = new Date();
   const claveMes = d => `${d.getFullYear()}-${d.getMonth()}`;
   const porMes = new Map();
-  for (const c of compras) { const k = claveMes(new Date(ms(c.fecha))); porMes.set(k, (porMes.get(k) || 0) + num(c.total)); }
+  for (const c of compras) {
+    const k = claveMes(new Date(ms(c.fecha)));
+    const m = porMes.get(k) || { super: 0, otros: 0 };
+    m[esGasto(c) ? "otros" : "super"] += num(c.total);
+    porMes.set(k, m);
+  }
   const meses = [];
-  for (let i = 5; i >= 0; i--) { const d = new Date(ahora.getFullYear(), ahora.getMonth() - i, 1); meses.push({ d, total: porMes.get(claveMes(d)) || 0, now: i === 0 }); }
-  const esteMes = meses[5].total;
+  for (let i = 5; i >= 0; i--) {
+    const d = new Date(ahora.getFullYear(), ahora.getMonth() - i, 1);
+    const m = porMes.get(claveMes(d)) || { super: 0, otros: 0 };
+    meses.push({ d, ...m, total: m.super + m.otros, now: i === 0 });
+  }
+  const mes = meses[5], esteMes = mes.total;
   const pres = num(config.presupuesto);
   const pct = pres ? Math.min(100, esteMes / pres * 100) : 0;
   const diasMes = new Date(ahora.getFullYear(), ahora.getMonth() + 1, 0).getDate();
-  const proy = esteMes / ahora.getDate() * diasMes;
+  const delMes = compras.filter(c => claveMes(new Date(ms(c.fecha))) === claveMes(ahora));
+  // la proyección solo usa el súper y gastos sueltos; los fijos (alquiler, expensas, impuestos) no se repiten en el mes
+  const FIJOS = ["Alquiler", "Expensas", "Impuestos", "Educación"];
+  const fijos = delMes.filter(c => FIJOS.includes(rubroDe(c))).reduce((s, c) => s + num(c.total), 0);
+  const proy = fijos + (esteMes - fijos) / ahora.getDate() * diasMes;
   const max = Math.max(...meses.map(m => m.total), pres, 1);
   const nombreMes = d => d.toLocaleDateString("es-AR", { month: "short" }).replace(".", "");
 
-  const delMes = compras.filter(c => claveMes(new Date(ms(c.fecha))) === claveMes(ahora));
+  const porRubro = new Map();
+  for (const c of delMes) porRubro.set(rubroDe(c), (porRubro.get(rubroDe(c)) || 0) + num(c.total));
+  const rubros = [...porRubro].sort((a, b) => b[1] - a[1]);
+  const maxRubro = Math.max(...rubros.map(r => r[1]), 1);
+
   const porCat = new Map();
-  for (const c of delMes) for (const it of c.items || []) { const k = CATS.includes(it.categoria) ? it.categoria : "Otros"; porCat.set(k, (porCat.get(k) || 0) + num(it.cant) * num(it.precio)); }
+  for (const c of delMes) if (!esGasto(c)) for (const it of c.items || []) { const k = CATS.includes(it.categoria) ? it.categoria : "Otros"; porCat.set(k, (porCat.get(k) || 0) + num(it.cant) * num(it.precio)); }
   const cats = [...porCat].sort((a, b) => b[1] - a[1]);
   const maxCat = Math.max(...cats.map(c => c[1]), 1);
 
@@ -1009,40 +1068,120 @@ function renderGastos() {
     <div class="panel budget">
       <div class="sub">Gastado en ${ahora.toLocaleDateString("es-AR", { month: "long" })}</div>
       <div class="big">${pesos(esteMes)}</div>
+      <div class="split"><span><i class="dot su"></i>Súper ${pesos(mes.super)}</span><span><i class="dot ot"></i>Otros gastos ${pesos(mes.otros)}</span></div>
       ${pres ? `<div class="meter"><i class="${esteMes > pres ? "over" : ""}" style="width:${pct}%"></i></div>
         <div class="sub">${esteMes > pres ? `Te pasaste ${pesos(esteMes - pres)} del presupuesto de ${pesos(pres)}` : `Quedan ${pesos(pres - esteMes)} de ${pesos(pres)}`}${esteMes && ahora.getDate() >= 5 ? ` · a este ritmo cerrás el mes en ${pesos(proy)}` : ""}</div>`
       : `<div class="sub">Poné un presupuesto mensual para ver cuánto te queda.</div>`}
       <form class="bud-form" id="frmPres">
         <input id="presupuesto" type="number" min="0" step="any" inputmode="decimal" placeholder="Presupuesto mensual ($)" value="${pres || ""}">
-        <button class="btn sm" type="submit">${pres ? "Cambiar" : "Guardar"}</button>
+        <button class="btn sm ghost" type="submit">${pres ? "Cambiar" : "Guardar"}</button>
       </form>
     </div>
 
+    <button class="btn full" id="btnNuevoGasto" style="margin-top:12px">+ Agregar un gasto</button>
+
+    ${rubros.length ? `<h2>En qué se fue este mes</h2><div class="panel">${rubros.map(([r, v]) => `
+      <div class="hbar"><span>${esc(r)}</span><div class="track"><i class="${r === "Súper" ? "su" : "ot"}" style="width:${v / maxRubro * 100}%"></i></div><b class="num">${pesos(v)}</b></div>`).join("")}</div>` : ""}
+
     <h2>Últimos 6 meses</h2>
     <div class="panel">
-      <div class="bars">${meses.map(m => `<div class="bar ${m.now ? "now" : ""}"><b>${m.total ? pesos(m.total).replace(/\s/g, "") : ""}</b>
-        <div class="col"><i style="height:${m.total / max * 100}%"></i></div><span>${nombreMes(m.d)}</span></div>`).join("")}</div>
+      <div class="bars">${meses.map(m => `<div class="bar ${m.now ? "now" : ""}"><b>${m.total ? corto(m.total) : ""}</b>
+        <div class="col"><div class="stack" style="height:${m.total / max * 100}%"><i class="ot" style="flex:${m.otros}"></i><i class="su" style="flex:${m.super}"></i></div></div><span>${nombreMes(m.d)}</span></div>`).join("")}</div>
+      <div class="split"><span><i class="dot su"></i>Súper</span><span><i class="dot ot"></i>Otros gastos</span></div>
     </div>
 
-    ${cats.length ? `<h2>Este mes por categoría</h2><div class="panel">${cats.map(([c, v]) => `
-      <div class="hbar"><span>${c}</span><div class="track"><i style="width:${v / maxCat * 100}%"></i></div><b class="num">${pesos(v)}</b></div>`).join("")}</div>` : ""}
+    ${cats.length ? `<h2>El súper de este mes por categoría</h2><div class="panel">${cats.map(([c, v]) => `
+      <div class="hbar"><span>${c}</span><div class="track"><i class="su" style="width:${v / maxCat * 100}%"></i></div><b class="num">${pesos(v)}</b></div>`).join("")}</div>` : ""}
 
-    <h2>Compras</h2>
-    ${compras.length ? `<div class="list">${compras.slice(0, 30).map(c => `
+    <h2>Movimientos</h2>
+    ${compras.length ? `<div class="list">${compras.slice(0, 40).map(c => esGasto(c) ? `
       <details class="compra"><summary>
-        <span><span class="row-name">${new Date(ms(c.fecha)).toLocaleDateString("es-AR", { weekday: "short", day: "numeric", month: "short" })}${c.lugar ? ` · ${esc(c.lugar)}` : ""}</span><br>
-        <span class="row-meta">${(c.items || []).length} productos · ${esc(c.por || "")}</span></span>
+        <span><span class="row-name">${esc(c.detalle || c.rubro)}</span><br>
+        <span class="row-meta"><i class="dot ot"></i>${esc(c.rubro)} · ${fechaCorta(c.fecha)} · ${esc((c.por || "").split(" ")[0])}</span></span>
         <b class="num">${pesos(c.total)}</b></summary>
-        <div class="det">${(c.items || []).map(i => `<div><span>${esc(i.nombre)} × ${fmt(i.cant)} ${esc(i.unidad)}</span><span class="num">${num(i.precio) ? pesos(num(i.precio) * num(i.cant)) : "sin precio"}</span></div>`).join("")}</div>
+        <div class="det"><div class="acc-row"><button class="btn ghost sm" data-editgasto="${c.id}">Editar</button><button class="btn danger sm" data-borrarcompra="${c.id}">${borrarCompraId === c.id ? "Confirmar" : "Eliminar"}</button></div></div>
+      </details>` : `
+      <details class="compra"><summary>
+        <span><span class="row-name">Súper${c.lugar ? ` · ${esc(c.lugar)}` : ""}</span><br>
+        <span class="row-meta"><i class="dot su"></i>${fechaCorta(c.fecha)} · ${(c.items || []).length} productos · ${esc((c.por || "").split(" ")[0])}</span></span>
+        <b class="num">${pesos(c.total)}</b></summary>
+        <div class="det">${(c.items || []).map(i => `<div><span>${esc(i.nombre)} × ${fmt(i.cant)} ${esc(i.unidad)}</span><span class="num">${num(i.precio) ? pesos(num(i.precio) * num(i.cant)) : "sin precio"}</span></div>`).join("")}
+          <div class="acc-row"><button class="btn danger sm" data-borrarcompra="${c.id}">${borrarCompraId === c.id ? "Confirmar (no cambia la despensa)" : "Eliminar este gasto"}</button></div></div>
       </details>`).join("")}</div>`
-    : `<div class="empty"><strong>Todavía no hay compras</strong><span>Cuando cierres una compra desde la Lista, con precios, aparece acá el gasto.</span></div>`}`;
+    : `<div class="empty"><strong>Todavía no hay gastos</strong><span>Agregá un gasto con el botón de arriba, o cerrá una compra desde la Lista y aparece acá.</span></div>`}`;
 
   $("#frmPres").onsubmit = async e => {
     e.preventDefault();
-    await setDoc(casaDoc(), { presupuesto: num($("#presupuesto").value) }, { merge: true });
-    toast("Presupuesto guardado");
+    const v = num($("#presupuesto").value);
+    $("#presupuesto").blur();
+    setDoc(casaDoc(), { presupuesto: v }, { merge: true }).catch(err => toast("No se pudo guardar: " + err.message));
+    toast("✓ Presupuesto guardado");
   };
+  $("#btnNuevoGasto").onclick = () => abrirGasto(null);
 }
+
+/* ---------- cargar un gasto general ---------- */
+let gastoId = null;
+const hoyISO = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`; };
+const isoDe = t => { const d = new Date(ms(t)); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`; };
+
+function abrirGasto(id) {
+  gastoId = id;
+  const g = id ? compras.find(c => c.id === id) : null;
+  $("#gTitulo").textContent = g ? "Editar gasto" : "Nuevo gasto";
+  $("#g-monto").value = g ? g.total : "";
+  $("#g-detalle").value = g?.detalle || "";
+  $("#g-fecha").value = g ? isoDe(g.fecha) : hoyISO();
+  elegirRubro(g?.rubro || "");
+  // atajos: los últimos gastos distintos, para repetir alquiler, luz, etc. con un toque
+  const vistos = new Set(), recientes = [];
+  for (const c of compras) if (esGasto(c)) { const k = (c.rubro || "") + "|" + (c.detalle || ""); if (!vistos.has(k)) { vistos.add(k); recientes.push(c); } if (recientes.length >= 6) break; }
+  $("#gRepetir").innerHTML = !g && recientes.length ? `<span class="field-lbl">Repetir uno anterior</span><div class="chips wrapchips">${recientes.map(c =>
+    `<button type="button" class="chip" data-repetir="${c.id}">${esc(c.detalle || c.rubro)} · ${pesos(c.total)}</button>`).join("")}</div>` : "";
+  $("#gErr").hidden = true;
+  $("#dlgGasto").showModal();
+  if (!g) setTimeout(() => $("#g-monto").focus(), 50);
+}
+let rubroSel = "";
+function elegirRubro(r) {
+  rubroSel = r;
+  for (const b of document.querySelectorAll("#gRubros .chip")) b.setAttribute("aria-pressed", b.dataset.rubro === r);
+}
+$("#gRubros").innerHTML = RUBROS.map(r => `<button type="button" class="chip" data-rubro="${esc(r)}" aria-pressed="false">${esc(r)}</button>`).join("");
+$("#dlgGasto").addEventListener("click", e => {
+  const t = e.target.closest("button"); if (!t) return;
+  if (t.dataset.rubro) elegirRubro(t.dataset.rubro);
+  if (t.dataset.repetir) {
+    const c = compras.find(x => x.id === t.dataset.repetir); if (!c) return;
+    $("#g-monto").value = c.total; $("#g-detalle").value = c.detalle || ""; elegirRubro(c.rubro || "Otros");
+  }
+});
+$("#gCancelar").onclick = () => $("#dlgGasto").close();
+$("#frmGasto").addEventListener("submit", e => {
+  e.preventDefault();
+  const monto = num($("#g-monto").value);
+  const err = $("#gErr");
+  if (monto <= 0) { err.textContent = "Poné cuánto gastaste."; err.hidden = false; $("#g-monto").focus(); return; }
+  if (!rubroSel) { err.textContent = "Elegí en qué fue el gasto."; err.hidden = false; return; }
+  const [y, m, d] = ($("#g-fecha").value || hoyISO()).split("-").map(Number);
+  const esHoy = $("#g-fecha").value === hoyISO();
+  const fecha = esHoy ? Timestamp.now() : Timestamp.fromDate(new Date(y, m - 1, d, 12));
+  const data = { tipo: "gasto", total: monto, rubro: rubroSel, detalle: $("#g-detalle").value.trim(), fecha, por: quien(), items: [] };
+  const p = gastoId ? updateDoc(doc(comprasCol(), gastoId), data) : setDoc(doc(comprasCol()), data);
+  p.catch(er => toast("No se pudo guardar: " + er.message));
+  $("#dlgGasto").close();
+  toast(`✓ ${gastoId ? "Gasto actualizado" : "Gasto agregado"}: ${data.detalle || data.rubro} ${pesos(monto)}`);
+});
+
+document.addEventListener("click", e => {
+  const t = e.target.closest("[data-editgasto],[data-borrarcompra]"); if (!t) return;
+  if (t.dataset.editgasto) { abrirGasto(t.dataset.editgasto); return; }
+  const id = t.dataset.borrarcompra;
+  if (borrarCompraId !== id) { borrarCompraId = id; renderGastos(); document.querySelector(`[data-borrarcompra="${id}"]`)?.closest("details")?.setAttribute("open", ""); return; }
+  borrarCompraId = null;
+  deleteDoc(doc(comprasCol(), id)).catch(er => toast("No se pudo eliminar: " + er.message));
+  toast("Gasto eliminado");
+});
 
 /* ---------- movimientos ---------- */
 const ref = id => doc(itemsCol(), id);
