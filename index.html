@@ -6,14 +6,19 @@
 <title>Despensa de Casa</title>
 <meta name="theme-color" content="#1f6b52">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-title" content="Casa">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Despensa">
 <link rel="manifest" href="manifest.webmanifest">
-<link rel="icon" href="icon.svg" type="image/svg+xml">
-<link rel="apple-touch-icon" href="icon.svg">
+<link rel="icon" href="icon-192.png" type="image/png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="modulepreload" href="https://www.gstatic.com/firebasejs/13.0.0/firebase-app.js">
+<link rel="modulepreload" href="https://www.gstatic.com/firebasejs/13.0.0/firebase-auth.js">
+<link rel="modulepreload" href="https://www.gstatic.com/firebasejs/13.0.0/firebase-firestore.js">
+<link rel="preconnect" href="https://firestore.googleapis.com">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=Atkinson+Hyperlegible:wght@400;700&display=swap">
-<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
 <style>
 /* Layout: app de una columna, barra de pestañas abajo, filas de stock con stepper a la derecha */
 :root{
@@ -106,7 +111,8 @@ main{padding-block:12px calc(96px + env(safe-area-inset-bottom,0px))}
 .empty{background:var(--surface);border:1px dashed var(--line);border-radius:14px;padding:24px;text-align:center;color:var(--muted);display:grid;gap:12px;justify-items:center}
 .empty strong{color:var(--ink);font:600 1.15rem var(--f-display)}
 
-.panel{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:16px;display:grid;gap:10px}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:16px;display:grid;grid-template-columns:minmax(0,1fr);gap:10px}
+.inline .btn{flex:none}
 .panel p{margin:0;color:var(--muted);font-size:.92rem}
 
 /* gastos */
@@ -174,6 +180,27 @@ dialog::backdrop{background:rgba(0,0,0,.45)}
 .quick-qty{font:800 2.6rem/1 var(--f-display);text-align:center;font-variant-numeric:tabular-nums}
 .quick-qty small{font:400 1rem var(--f-body);color:var(--muted)}
 
+/* pantalla de carga */
+.splash{position:fixed;inset:0;display:grid;place-items:center;background:var(--bg);z-index:40}
+.splash div{display:grid;justify-items:center;gap:14px;color:var(--muted)}
+.splash img{width:84px;height:84px;border-radius:22px}
+.spin{width:28px;height:28px;border:3px solid var(--line);border-top-color:var(--accent);border-radius:50%}
+@media (prefers-reduced-motion:no-preference){.spin{animation:gira .8s linear infinite}}
+@keyframes gira{to{transform:rotate(360deg)}}
+.cargando{padding:40px 0;display:grid;justify-items:center;gap:10px;color:var(--muted)}
+
+/* aviso para instalar */
+.install{position:fixed;left:12px;right:12px;bottom:calc(76px + env(safe-area-inset-bottom,0px));z-index:30;max-width:616px;margin:0 auto;
+  display:grid;grid-template-columns:auto minmax(0,1fr);gap:12px;align-items:center;background:var(--ink);color:var(--bg);border-radius:16px;padding:14px;box-shadow:0 10px 30px rgba(0,0,0,.25)}
+.install.solo{bottom:calc(16px + env(safe-area-inset-bottom,0px))}
+.install img{width:48px;height:48px;border-radius:12px}
+.install b{display:block;font:800 1.05rem var(--f-display)}
+.install p{margin:2px 0 0;font-size:.88rem;opacity:.85}
+.install .acc{grid-column:1/-1;display:flex;gap:8px}
+.install .acc .btn{flex:1}
+.install .btn.ghost{color:var(--bg);border-color:rgba(255,255,255,.3)}
+.ios-share{display:inline-block;width:16px;height:16px;vertical-align:-3px}
+
 /* login y bienvenida */
 .gate-card strong{font:600 1.05rem var(--f-display)}
 .gate-form{display:grid;gap:12px}
@@ -198,6 +225,17 @@ dialog::backdrop{background:rgba(0,0,0,.45)}
 </style>
 </head>
 <body>
+
+<div class="splash" id="splash"><div><img src="icon-192.png" alt=""><div class="spin" aria-hidden="true"></div><span>Cargando la despensa…</span></div></div>
+
+<div class="install" id="install" hidden role="dialog" aria-labelledby="installTit">
+  <img src="icon-192.png" alt="">
+  <div><b id="installTit">Instalá la app en tu celular</b><p id="installTxt">Queda en la pantalla de inicio y abre más rápido, como cualquier app.</p></div>
+  <div class="acc">
+    <button class="btn ghost sm" type="button" id="installNo">Ahora no</button>
+    <button class="btn sm" type="button" id="installSi">Instalar</button>
+  </div>
+</div>
 
 <section class="gate" id="gate" hidden>
   <div class="gate-card">
@@ -298,6 +336,16 @@ dialog::backdrop{background:rgba(0,0,0,.45)}
         <p>Mandá este link por WhatsApp. Quien lo abra crea su cuenta (con Google o con mail) y queda adentro de la casa. Vale 30 días; si generás uno nuevo, el anterior deja de andar.</p>
         <div id="invBox"></div>
         <button class="btn" id="btnInvitar">Crear link de invitación</button>
+      </div>
+      <h2>Instalar en el celular</h2>
+      <div class="panel">
+        <p id="installMas">Agregala a la pantalla de inicio para abrirla como una app.</p>
+        <button class="btn ghost" id="btnInstalarMas">Instalar</button>
+      </div>
+      <h2>Unirme a otra casa</h2>
+      <div class="panel">
+        <p>Si alguien te pasó un link o código de su casa, pegalo acá. Vas a pasar a ver esa despensa.</p>
+        <form class="inline" id="frmCodigoMas"><input id="codigoMas" placeholder="Link o código" autocomplete="off"><button class="btn ghost sm" type="submit">Unirme</button></form>
       </div>
       <h2>Copia de seguridad</h2>
       <div class="panel">
@@ -415,6 +463,12 @@ dialog::backdrop{background:rgba(0,0,0,.45)}
 
 <div class="toast" id="toast" hidden></div>
 
+<script>
+  setTimeout(function () {
+    var s = document.getElementById("splash");
+    if (s && !s.hidden) s.querySelector("span").innerHTML = 'Está tardando más de lo normal. Revisá la conexión.<br><button class="btn sm" style="margin-top:12px" onclick="location.reload()">Reintentar</button>';
+  }, 12000);
+</script>
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/13.0.0/firebase-app.js";
 import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect, onAuthStateChanged, signOut, createUserWithEmailAndPassword, signInWithEmailAndPassword, sendPasswordResetEmail, updateProfile } from "https://www.gstatic.com/firebasejs/13.0.0/firebase-auth.js";
@@ -512,21 +566,20 @@ for (const b of document.querySelectorAll(".seg button")) b.onclick = () => {
   $("#btnOlvide").hidden = modoMail === "crear";
   $("#gateErr").hidden = true;
 };
+let nombrePendiente = "";
 $("#frmMail").addEventListener("submit", async e => {
   e.preventDefault();
   $("#gateErr").hidden = true;
   const mail = $("#m-mail").value.trim(), pass = $("#m-pass").value;
+  const btn = $("#btnMail"); btn.disabled = true;
   try {
     if (modoMail === "crear") {
-      const nombre = $("#m-nombre").value.trim();
+      nombrePendiente = $("#m-nombre").value.trim();
       const cred = await createUserWithEmailAndPassword(auth, mail, pass);
-      if (nombre) {
-        await updateProfile(cred.user, { displayName: nombre });
-        $("#o-nombre").value = "";
-        if (!$("#onb").hidden) mostrarOnb("", invActual);
-      }
+      if (nombrePendiente) updateProfile(cred.user, { displayName: nombrePendiente }).catch(() => {});
     } else await signInWithEmailAndPassword(auth, mail, pass);
   } catch (err) { errGate(err); }
+  btn.disabled = false;
 });
 $("#btnOlvide").onclick = async () => {
   const mail = $("#m-mail").value.trim();
@@ -542,8 +595,12 @@ const ALFA = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 const nuevoCodigo = () => Array.from(crypto.getRandomValues(new Uint32Array(10)), n => ALFA[n % ALFA.length]).join("");
 const linkInv = c => `${location.origin}${location.pathname}?inv=${c}`;
 const leerCodigo = txt => { const t = String(txt || "").trim(); const m = t.match(/[?&]inv=([A-Za-z0-9]+)/); return (m ? m[1] : t).toUpperCase().replace(/[^A-Z0-9]/g, ""); };
-const nombreUsuario = () => user?.displayName || (user?.email || "").split("@")[0];
+const nombreUsuario = () => nombrePendiente || user?.displayName || (user?.email || "").split("@")[0] || "Yo";
 const perfilRef = () => doc(db, "usuarios", user.uid);
+
+// La casa de cada persona queda recordada en el teléfono: la próxima vez entra sin esperar a la red
+const guardarCasaLocal = (uid, id) => { try { id ? localStorage.setItem("casa:" + uid, id) : localStorage.removeItem("casa:" + uid); } catch {} };
+const casaLocal = uid => { try { return localStorage.getItem("casa:" + uid); } catch { return null; } };
 
 function invGuardada() {
   const url = new URLSearchParams(location.search).get("inv");
@@ -555,7 +612,11 @@ function olvidarInv() {
 }
 $("#invAviso").hidden = !invGuardada();
 
-function pantalla(cual) { for (const id of ["gate", "onb", "app"]) $("#" + id).hidden = id !== cual; }
+function pantalla(cual) {
+  $("#splash").hidden = cual !== "splash";
+  for (const id of ["gate", "onb", "app"]) $("#" + id).hidden = id !== cual;
+  mostrarInstalar();
+}
 function cerrarSubs() { subs.forEach(f => f()); subs = []; }
 
 let invActual = null;
@@ -584,21 +645,14 @@ async function unirse(inv) {
   const b = writeBatch(db);
   b.set(doc(db, "hogar", inv.casa, "miembros", user.uid), { nombre: nombreUsuario(), email: user.email || "", rol: "miembro", codigo: inv.codigo, desde: serverTimestamp() });
   b.set(perfilRef(), { casa: inv.casa }, { merge: true });
-  try { await b.commit(); } catch (e) { mostrarOnb("No se pudo entrar a la casa: " + e.message, inv); return; }
+  try { await b.commit(); } catch (e) { mostrarOnb("No se pudo entrar a la casa: " + e.message, inv); return false; }
   olvidarInv();
   entrarCasa(inv.casa);
-  toast(`Te uniste a ${inv.casaNombre || "la casa"}`);
+  toast(`Bienvenido a ${inv.casaNombre || "la casa"}`);
+  return true;
 }
 
-$("#btnUnirse").onclick = () => invActual && unirse(invActual);
-$("#frmCodigo").addEventListener("submit", async e => {
-  e.preventDefault();
-  const r = await buscarInvitacion(leerCodigo($("#o-codigo").value));
-  if (r.error) mostrarOnb(r.error); else unirse(r.inv);
-});
-$("#frmCasa").addEventListener("submit", async e => {
-  e.preventDefault();
-  const nombre = $("#o-nombre").value.trim() || "Mi casa";
+async function crearCasa(nombre) {
   const id = doc(collection(db, "hogar")).id;
   const b = writeBatch(db);
   b.set(doc(db, "hogar", id), { nombre, creador: user.uid, creado: serverTimestamp() });
@@ -606,39 +660,71 @@ $("#frmCasa").addEventListener("submit", async e => {
   b.set(perfilRef(), { casa: id }, { merge: true });
   try { await b.commit(); } catch (err) { mostrarOnb("No se pudo crear la casa: " + err.message); return; }
   entrarCasa(id);
-  toast("Casa creada. Invitá a tu familia desde Más.");
-});
+}
 
+$("#btnUnirse").onclick = () => invActual && unirse(invActual);
+async function unirsePorCodigo(texto, enOnb) {
+  const r = await buscarInvitacion(leerCodigo(texto));
+  if (r.error) { enOnb ? mostrarOnb(r.error) : toast(r.error); return; }
+  if (r.inv.casa === casaId) { toast("Ya estás en esa casa"); return; }
+  unirse(r.inv);
+}
+$("#frmCodigo").addEventListener("submit", e => { e.preventDefault(); unirsePorCodigo($("#o-codigo").value, true); });
+$("#frmCodigoMas").addEventListener("submit", e => { e.preventDefault(); unirsePorCodigo($("#codigoMas").value, false); $("#codigoMas").value = ""; });
+$("#frmCasa").addEventListener("submit", e => { e.preventDefault(); crearCasa($("#o-nombre").value.trim() || "Mi casa"); });
+
+// Al entrar: directo a la despensa. Si vino con invitación se une solo; si es nuevo se le crea su casa.
 onAuthStateChanged(auth, async u => {
   user = u;
   cerrarSubs();
   if (!u) { casaId = null; pantalla("gate"); return; }
+  const codigo = invGuardada();
+  const recordada = casaLocal(u.uid);
+
+  if (recordada && !codigo) {          // caso de todos los días: abre al instante
+    entrarCasa(recordada);
+    getDoc(doc(db, "usuarios", u.uid)).then(s => {
+      const c = s.data()?.casa;
+      if (c && c !== casaId && user?.uid === u.uid) entrarCasa(c);
+    }).catch(() => {});
+    return;
+  }
+
+  pantalla("splash");
   let perfil = {};
   try { perfil = (await getDoc(doc(db, "usuarios", u.uid))).data() || {}; } catch {}
-  const codigo = invGuardada();
+
   if (codigo) {
     const r = await buscarInvitacion(leerCodigo(codigo));
-    if (r.error) { olvidarInv(); perfil.casa ? (entrarCasa(perfil.casa), toast(r.error)) : mostrarOnb(r.error); return; }
-    if (r.inv.casa === perfil.casa) { olvidarInv(); entrarCasa(perfil.casa); return; }
-    mostrarOnb("", r.inv); return;
+    olvidarInv();
+    if (!r.error && r.inv.casa !== perfil.casa) { await unirse(r.inv); return; }
+    if (r.error) toast(r.error);
   }
-  if (perfil.casa) entrarCasa(perfil.casa); else mostrarOnb();
+  if (perfil.casa) entrarCasa(perfil.casa);
+  else await crearCasa(`Casa de ${nombreUsuario().split(" ")[0]}`);
 });
 
 function sinAcceso(err) {
   if (!casaId) return;
-  if (err.code === "permission-denied") { mostrarOnb("Ya no tenés acceso a esa casa. Unite con un link nuevo o creá otra."); return; }
+  if (err.code === "permission-denied") {
+    guardarCasaLocal(user?.uid, null);
+    mostrarOnb("Ya no tenés acceso a esa casa. Unite con un link nuevo o creá otra.");
+    return;
+  }
   const el = $("#appErr"); el.textContent = "Error de conexión con la base: " + err.message; el.hidden = false;
 }
 
+let cargado = false;
 function entrarCasa(id) {
   cerrarSubs();
-  casaId = id; items = []; movs = []; compras = []; config = {}; miembros = [];
+  casaId = id; items = []; movs = []; compras = []; config = {}; miembros = []; cargado = false;
+  guardarCasaLocal(user.uid, id);
   pantalla("app"); tab = "despensa"; render();
   $("#cuenta").textContent = `Conectado como ${user.email || nombreUsuario()}`;
   const opt = { serverTimestamps: "estimate" };
   subs.push(onSnapshot(itemsCol(), s => {
     items = s.docs.map(d => ({ id: d.id, ...d.data(opt) })).sort((a, b) => (a.nombre || "").localeCompare(b.nombre || "", "es"));
+    cargado = true;
     $("#appErr").hidden = true; render();
   }, sinAcceso));
   subs.push(onSnapshot(query(movsCol(), where("ts", ">=", Timestamp.fromMillis(Date.now() - 90 * DIA)), orderBy("ts", "desc")), s => {
@@ -654,6 +740,56 @@ function entrarCasa(id) {
     renderCasa();
   }, sinAcceso));
 }
+
+/* ---------- instalar en el celular ---------- */
+let promptInstalar = null;
+const yaInstalada = () => matchMedia("(display-mode: standalone)").matches || navigator.standalone === true;
+const esIOS = () => /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+const posponer = () => { try { localStorage.setItem("installNo", Date.now()); } catch {} };
+const pospuesto = () => { try { return Date.now() - Number(localStorage.getItem("installNo") || 0) < 3 * DIA; } catch { return false; } };
+
+addEventListener("beforeinstallprompt", e => { e.preventDefault(); promptInstalar = e; mostrarInstalar(); });
+addEventListener("appinstalled", () => { promptInstalar = null; $("#install").hidden = true; toast("App instalada. Ya la tenés en la pantalla de inicio."); mostrarInstalar(); });
+
+function mostrarInstalar() {
+  const b = $("#install");
+  const puede = !yaInstalada() && (promptInstalar || esIOS());
+  // panel fijo en Más
+  $("#btnInstalarMas").hidden = !puede;
+  $("#installMas").textContent = yaInstalada() ? "Ya la estás usando instalada."
+    : promptInstalar ? "Agregala a la pantalla de inicio para abrirla como una app."
+    : esIOS() ? "En iPhone: tocá el botón Compartir de Safari (el cuadrado con la flecha) y elegí \"Agregar a inicio\"."
+    : "Abrila desde Chrome en el celular y va a aparecer el botón para instalar. También podés ir al menú ⋮ → Instalar app.";
+  // aviso flotante
+  if (!puede || pospuesto() || !$("#splash").hidden) { b.hidden = true; return; }
+  b.classList.toggle("solo", $("#app").hidden);
+  if (esIOS() && !promptInstalar) {
+    $("#installTxt").innerHTML = 'Tocá <svg class="ios-share" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12M8 7l4-4 4 4M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7"/></svg> abajo en Safari y elegí <b style="display:inline;font:inherit;font-weight:700">Agregar a inicio</b>.';
+    $("#installSi").textContent = "Entendido";
+  } else {
+    $("#installTxt").textContent = "Queda en la pantalla de inicio y abre más rápido, como cualquier app.";
+    $("#installSi").textContent = "Instalar";
+  }
+  b.hidden = false;
+}
+async function instalar() {
+  if (promptInstalar) {
+    promptInstalar.prompt();
+    const { outcome } = await promptInstalar.userChoice;
+    promptInstalar = null;
+    if (outcome !== "accepted") posponer();
+  } else if (esIOS()) {
+    posponer();
+    toast("Compartir → Agregar a inicio");
+  }
+  $("#install").hidden = true;
+  mostrarInstalar();
+}
+$("#installSi").onclick = instalar;
+$("#btnInstalarMas").onclick = () => promptInstalar ? instalar() : toast(esIOS() ? "En Safari: Compartir → Agregar a inicio" : "Menú ⋮ del navegador → Instalar app");
+$("#installNo").onclick = () => { posponer(); $("#install").hidden = true; };
+
+if ("serviceWorker" in navigator) addEventListener("load", () => navigator.serviceWorker.register("sw.js").catch(() => {}));
 
 /* ---------- pestaña Más: casa, familia, invitación ---------- */
 let quitarId = null, confirmDejar = false;
@@ -738,6 +874,7 @@ function renderDespensa() {
 
   const q = busca.trim().toLowerCase();
   const vis = items.filter(i => (cat === "Todas" || catDe(i) === cat) && (!q || (i.nombre || "").toLowerCase().includes(q) || (i.codigo || "") === q));
+  if (!cargado) { $("#stock").innerHTML = `<div class="cargando"><div class="spin"></div>Cargando productos…</div>`; return; }
   if (!items.length) {
     $("#stock").innerHTML = `<div class="empty" style="margin-top:12px"><strong>La despensa está vacía</strong>
       <span>Agregá productos con el botón +, escaneá un código, o cargá una despensa de ejemplo para arrancar.</span>
@@ -1056,9 +1193,14 @@ $("#btnALista").onclick = async () => {
 
 /* ---------- escáner ---------- */
 let scanner = null, scanModo = "buscar";
+const cargarScript = src => new Promise((ok, mal) => { const s = document.createElement("script"); s.src = src; s.onload = ok; s.onerror = mal; document.head.appendChild(s); });
 async function escanear(modo) {
   scanModo = modo;
-  if (!window.Html5Qrcode) { toast("No se pudo cargar el escáner. Revisá la conexión."); return; }
+  if (!window.Html5Qrcode) {
+    toast("Abriendo la cámara…");
+    try { await cargarScript("https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"); }
+    catch { toast("No se pudo cargar el escáner. Revisá la conexión."); return; }
+  }
   $("#scanMsg").textContent = "Apuntá la cámara al código de barras del producto.";
   $("#dlgScan").showModal();
   const F = window.Html5QrcodeSupportedFormats;
