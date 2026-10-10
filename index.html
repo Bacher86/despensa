@@ -180,6 +180,30 @@ dialog::backdrop{background:rgba(0,0,0,.45)}
 .quick-qty{font:800 2.6rem/1 var(--f-display);text-align:center;font-variant-numeric:tabular-nums}
 .quick-qty small{font:400 1rem var(--f-body);color:var(--muted)}
 
+/* producto repetido */
+.dup{display:grid;gap:8px;background:var(--info-bg);border-radius:12px;padding:12px}
+.dup.exacto{background:var(--warn-bg)}
+.dup > span{font-size:.88rem;color:var(--muted)}
+.dup-row{display:flex;justify-content:space-between;align-items:center;gap:10px;background:var(--surface);border-radius:10px;padding:8px 10px}
+.dup-row > span{display:grid;min-width:0}
+.dup-row .btn{flex:none}
+.dup .linkbtn{justify-self:start;padding:2px 0;font-size:.88rem}
+@media (prefers-reduced-motion:no-preference){
+  #dupBox.flash .dup{animation:sacude .45s}
+  @keyframes sacude{20%,60%{transform:translateX(-6px)}40%,80%{transform:translateX(6px)}}
+  .row.recien{animation:brilla 2s}
+  @keyframes brilla{0%,40%{background:var(--accent-soft)}}
+}
+
+/* producto reconocido por código */
+.lookup{display:flex;gap:12px;align-items:center;border-radius:12px;padding:10px 12px;background:var(--bg);color:var(--muted);font-size:.9rem}
+.lookup.ok{background:var(--accent-soft);color:var(--ink)}
+.lookup.no{background:var(--warn-bg);color:var(--ink)}
+.lookup img{width:56px;height:56px;object-fit:contain;border-radius:8px;background:#fff;flex:none}
+.lookup span{min-width:0;display:grid;gap:2px}
+.lookup small{color:var(--muted);font-size:.8rem}
+.lookup .spin{width:20px;height:20px;flex:none}
+
 /* pantalla de carga */
 .splash{position:fixed;inset:0;display:grid;place-items:center;background:var(--bg);z-index:40}
 .splash div{display:grid;justify-items:center;gap:14px;color:var(--muted)}
@@ -384,7 +408,9 @@ dialog::backdrop{background:rgba(0,0,0,.45)}
 <dialog id="dlg">
   <form class="sheet" id="frm">
     <h3 id="dlgTitle">Nuevo producto</h3>
-    <label class="field"><span>Nombre</span><input id="f-nombre" required placeholder="Ej: Detergente"></label>
+    <div id="lookupBox" hidden></div>
+    <label class="field"><span>Nombre</span><input id="f-nombre" required placeholder="Ej: Detergente" autocomplete="off"></label>
+    <div id="dupBox" hidden></div>
     <div class="field"><span>Código de barras (opcional)</span>
       <div class="inline"><input id="f-codigo" inputmode="numeric" placeholder="Escanealo o escribilo"><button class="btn ghost sm" type="button" id="btnScanCampo">Escanear</button></div>
     </div>
@@ -1137,7 +1163,10 @@ function abrir(id, pre = {}) {
   $("#btnALista").textContent = it.enLista ? "Sacar de la lista" : "Agregar a la lista";
   $("#histBox").innerHTML = id ? historialHTML(it) : "";
   if (!$("#dlg").open) $("#dlg").showModal();
-  if (!id && !pre.nombre) $("#f-nombre").focus();
+  $("#lookupBox").hidden = true; $("#lookupBox").innerHTML = "";
+  $("#dupBox").hidden = true; $("#dupBox").innerHTML = ""; permitirDup = false;
+  if (!id && it.nombre) revisarDuplicados();
+  if (!id && !pre.nombre && !pre.codigo) $("#f-nombre").focus();
 }
 
 function historialHTML(it) {
@@ -1158,29 +1187,111 @@ function historialHTML(it) {
 }
 
 $("#btnCancel").onclick = () => $("#dlg").close();
-$("#frm").addEventListener("submit", async e => {
+
+/* ---------- productos repetidos ---------- */
+const normal = s => String(s || "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^a-z0-9 ]/g, " ").replace(/\s+/g, " ").trim();
+const bigramas = s => { const t = ` ${s} `, r = []; for (let i = 0; i < t.length - 1; i++) r.push(t.slice(i, i + 2)); return r; };
+function parecido(a, b) {
+  const x = bigramas(a), y = bigramas(b); if (!x.length || !y.length) return 0;
+  const m = new Map(); for (const g of y) m.set(g, (m.get(g) || 0) + 1);
+  let comun = 0; for (const g of x) if (m.get(g) > 0) { comun++; m.set(g, m.get(g) - 1); }
+  return 2 * comun / (x.length + y.length);
+}
+const exacto = nombre => { const n = normal(nombre); return n ? items.find(i => normal(i.nombre) === n) : null; };
+function parecidos(nombre) {
+  const n = normal(nombre); if (n.length < 3) return [];
+  const pal = n.split(" ").filter(w => w.length >= 3);
+  return items.map(i => {
+    const m = normal(i.nombre);
+    const ip = m.split(" ").filter(w => w.length >= 3);
+    const contiene = ip.length && (ip.every(w => n.includes(w)) || pal.every(w => m.includes(w)));
+    return [i, contiene ? 1 : parecido(n, m)];
+  }).filter(([, s]) => s >= 0.55).sort((a, b) => b[1] - a[1]).slice(0, 3).map(([i]) => i);
+}
+
+let permitirDup = false, tDup;
+function revisarDuplicados() {
+  const box = $("#dupBox");
+  if (editId) { box.hidden = true; return; }
+  const nombre = $("#f-nombre").value;
+  const ex = exacto(nombre);
+  const lista = ex ? [ex] : parecidos(nombre);
+  if (!lista.length) { box.hidden = true; box.innerHTML = ""; return; }
+  const cant = num($("#f-cantidad").value) || 1;
+  box.classList.remove("flash");
+  box.innerHTML = `<div class="dup ${ex ? "exacto" : ""}">
+    <b>${ex ? `Ya tenés "${esc(ex.nombre)}" cargado` : "¿Ya lo tenés cargado?"}</b>
+    <span>${ex ? `Hay ${fmt(ex.cantidad)} ${esc(ex.unidad)}. Sumale lo nuevo en vez de crearlo otra vez.` : "Encontré productos parecidos. Si es uno de estos, sumale la cantidad."}</span>
+    ${lista.map(i => `<div class="dup-row"><span><span class="row-name">${esc(i.nombre)}</span><span class="row-meta">Hay ${fmt(i.cantidad)} ${esc(i.unidad)} · ${esc(i.ubicacion || "")}</span></span>
+      <button class="btn sm" type="button" data-sumardup="${i.id}">Sumar ${fmt(cant)}</button></div>`).join("")}
+    ${ex ? `<button class="linkbtn" type="button" data-crearigual>No, es otro producto: crearlo aparte</button>` : ""}
+  </div>`;
+  box.hidden = false;
+}
+$("#f-nombre").addEventListener("input", () => { permitirDup = false; clearTimeout(tDup); tDup = setTimeout(revisarDuplicados, 150); });
+$("#f-cantidad").addEventListener("input", () => { if (!$("#dupBox").hidden) revisarDuplicados(); });
+$("#dupBox").addEventListener("click", e => {
+  const t = e.target.closest("button"); if (!t) return;
+  if ("crearigual" in t.dataset) { permitirDup = true; $("#dupBox").innerHTML = `<div class="dup"><span>Se va a crear como un producto aparte. Tocá Guardar.</span></div>`; return; }
+  const id = t.dataset.sumardup; if (!id) return;
+  const it = items.find(i => i.id === id); if (!it) return;
+  const cant = num($("#f-cantidad").value) || 1;
+  const codigo = $("#f-codigo").value.trim();
+  const precio = num($("#f-precio").value);
+  const b = writeBatch(db);
+  const upd = { cantidad: increment(cant), ...firma() };
+  if (codigo && !it.codigo) upd.codigo = codigo;
+  if (precio) upd.precio = precio;
+  b.update(ref(id), upd);
+  logMov(b, it, cant, "suma");
+  b.commit().catch(err => toast("No se pudo guardar: " + err.message));
+  if (codigo) aprenderCodigo({ codigo, nombre: it.nombre, categoria: it.categoria, unidad: it.unidad });
+  $("#dlg").close();
+  toast(`✓ Sumado: ${it.nombre} ahora tiene ${fmt(num(it.cantidad) + cant)} ${it.unidad}`);
+});
+
+/* ---------- guardar ---------- */
+$("#frm").addEventListener("submit", e => {
   e.preventDefault();
   const data = {
     nombre: $("#f-nombre").value.trim(), codigo: $("#f-codigo").value.trim(), categoria: $("#f-categoria").value, ubicacion: $("#f-ubicacion").value,
     unidad: $("#f-unidad").value, cantidad: num($("#f-cantidad").value), minimo: num($("#f-minimo").value), objetivo: num($("#f-objetivo").value),
     precio: num($("#f-precio").value), paso: num($("#f-paso").value) || 1, ...firma()
   };
-  if (!data.nombre) return;
+  if (!data.nombre) { $("#f-nombre").focus(); toast("Poné un nombre al producto"); return; }
+  if (!editId && !permitirDup && exacto(data.nombre)) {
+    revisarDuplicados();
+    const box = $("#dupBox"); box.classList.remove("flash"); void box.offsetWidth; box.classList.add("flash");
+    box.scrollIntoView({ block: "center", behavior: "smooth" });
+    return;
+  }
   if (data.objetivo <= data.minimo) data.objetivo = data.minimo + data.paso;
-  try {
-    const b = writeBatch(db);
-    if (editId) {
-      const prev = items.find(i => i.id === editId);
-      b.update(ref(editId), { ...data, cantCompra: deleteField() });
-      const delta = +(data.cantidad - num(prev.cantidad)).toFixed(3);
-      if (delta) logMov(b, { ...prev, ...data }, delta, "ajuste");
-    } else {
-      b.set(doc(itemsCol()), { ...data, enLista: false, enCarrito: false });
-    }
-    await b.commit();
-    $("#dlg").close(); toast("Guardado");
-  } catch (err) { toast("No se pudo guardar: " + err.message); }
+  const b = writeBatch(db);
+  if (editId) {
+    const prev = items.find(i => i.id === editId);
+    b.update(ref(editId), { ...data, cantCompra: deleteField() });
+    const delta = +(data.cantidad - num(prev.cantidad)).toFixed(3);
+    if (delta) logMov(b, { ...prev, ...data }, delta, "ajuste");
+  } else {
+    b.set(doc(itemsCol()), { ...data, enLista: false, enCarrito: false });
+  }
+  // se guarda en el teléfono al instante y se sube a la nube por detrás (también sin señal)
+  b.commit().catch(err => toast("No se pudo guardar: " + err.message));
+  aprenderCodigo(data);
+  const nuevo = !editId;
+  $("#dlg").close();
+  toast(nuevo ? `✓ Producto cargado: ${data.nombre}` : `✓ Cambios guardados: ${data.nombre}`);
+  if (nuevo) { cat = "Todas"; busca = ""; $("#buscar").value = ""; setTimeout(() => resaltar(data.nombre), 120); }
 });
+
+// después de cargar, muestra el producto en la lista para que se vea que quedó
+function resaltar(nombre) {
+  const n = normal(nombre);
+  const fila = [...document.querySelectorAll("#stock .row")].find(r => normal(r.querySelector(".row-name")?.textContent) === n);
+  if (!fila) return;
+  fila.scrollIntoView({ block: "center", behavior: "smooth" });
+  fila.classList.add("recien"); setTimeout(() => fila.classList.remove("recien"), 2200);
+}
 $("#btnBorrar").onclick = async () => {
   if (!confirmDel) { confirmDel = true; $("#btnBorrar").textContent = "Tocá de nuevo para eliminar"; return; }
   await deleteDoc(ref(editId)); $("#dlg").close(); toast("Eliminado");
@@ -1220,31 +1331,140 @@ $("#btnScanClose").onclick = pararScan;
 $("#dlgScan").addEventListener("cancel", pararScan);
 $("#btnScan").onclick = () => escanear("buscar");
 $("#btnScanCampo").onclick = () => escanear("campo");
+$("#f-codigo").addEventListener("change", e => { const c = e.target.value.trim(); if (/^\d{8,14}$/.test(c)) completarDesdeCodigo(c); });
 
 async function alLeer(codigo) {
   if (navigator.vibrate) navigator.vibrate(60);
-  if (scanModo === "campo") {
+  codigo = String(codigo).trim();
+  if (scanModo !== "campo") {
+    const it = items.find(i => i.codigo === codigo);
+    if (it) { abrirRapido(it.id); return; }
+    abrir(null, { codigo, nombre: "" });
+  } else {
     $("#f-codigo").value = codigo;
-    if (!$("#f-nombre").value) { const n = await buscarNombre(codigo); if (n) $("#f-nombre").value = n; }
-    return;
   }
-  const it = items.find(i => i.codigo === codigo);
-  if (it) { abrirRapido(it.id); return; }
-  toast("Producto nuevo: completá los datos");
-  abrir(null, { codigo });
-  const n = await buscarNombre(codigo);
-  if (n && !$("#f-nombre").value) $("#f-nombre").value = n;
+  completarDesdeCodigo(codigo);
 }
 
-// nombre sugerido desde Open Food Facts (base pública de productos)
-async function buscarNombre(codigo) {
-  try {
-    const r = await fetch(`https://world.openfoodfacts.org/api/v2/product/${encodeURIComponent(codigo)}.json?fields=product_name,product_name_es,brands,quantity`);
-    const j = await r.json();
-    if (j.status !== 1) return "";
-    const p = j.product;
-    return [p.product_name_es || p.product_name, p.brands?.split(",")[0], p.quantity].filter(Boolean).join(" ").trim();
-  } catch { return ""; }
+/* ---------- reconocer productos por código ----------
+   1) catálogo propio de la app (lo que alguien ya nombró una vez)
+   2) bases públicas: alimentos, perfumería/higiene, limpieza y mascotas (Open Food Facts y hermanas)
+   3) UPCitemdb (base general, sobre todo productos importados)                                     */
+let nombreTocado = false;
+$("#f-nombre").addEventListener("input", () => { nombreTocado = true; });
+
+const conTiempo = (p, ms = 7000) => Promise.race([p, new Promise((_, mal) => setTimeout(() => mal(new Error("tiempo")), ms))]);
+const variantes = c => { const v = [c]; if (/^\d{12}$/.test(c)) v.push("0" + c); if (/^0\d{12}$/.test(c)) v.push(c.slice(1)); return v; };
+
+function categoriaDesde(tags = [], base) {
+  const t = tags.join(" ");
+  if (base === "beauty") return "Higiene";
+  if (base === "products") return /clean|deterg|limpi|lavan|laundry|dish/.test(t) ? "Limpieza" : "Otros";
+  if (base === "pet") return "Mascotas";
+  if (/meat|carne|poultry|pollo|beef|sausage|fish|pescad/.test(t)) return "Carnes";
+  if (/dair|lacteo|milk|leche|cheese|queso|yogur|butter|manteca|cream/.test(t)) return "Lácteos";
+  if (/frozen|congelad|ice-cream|helado/.test(t)) return "Congelados";
+  if (/yerba|mate|coffee|cafe|infusion|tea-|-teas|cocoa|cacao/.test(t)) return "Almacén";
+  if (/beverage|bebida|drink|water|agua|juice|jugo|soda|wine|vino|beer|cerveza/.test(t)) return "Bebidas";
+  if (/fruit|fruta|vegetable|verdura|hortaliz/.test(t)) return "Verdulería";
+  if (/clean|limpi|deterg/.test(t)) return "Limpieza";
+  if (/hygien|higien|shampoo|soap|jab|toothpaste|dental|toilet-paper|papel-higien/.test(t)) return "Higiene";
+  return "Almacén";
+}
+function unidadDesde(cant = "") {
+  const q = cant.toLowerCase();
+  if (/\b(\d+[.,]?\d*)\s*(l|lt|litro)s?\b/.test(q) || /\bml\b|\bcc\b/.test(q)) return "botella";
+  return "u";
+}
+const limpiar = s => String(s || "").replace(/\s+/g, " ").trim();
+const capital = s => s ? s.charAt(0).toUpperCase() + s.slice(1) : s;
+
+async function deCatalogo(c) {
+  const s = await getDoc(doc(db, "catalogo", c));
+  return s.exists() ? { ...s.data(), fuente: "tu catálogo" } : null;
+}
+
+async function deOpenFacts(c, host, base) {
+  const r = await fetch(`https://${host}/api/v2/product/${encodeURIComponent(c)}.json?fields=product_name,product_name_es,generic_name_es,generic_name,brands,quantity,categories_tags,image_front_small_url,image_small_url&lc=es`);
+  if (!r.ok && r.status !== 404) throw new Error("http " + r.status);
+  const j = await r.json();
+  const p = j.product;
+  if (j.status !== 1 || !p) return null;
+  const nombreBase = limpiar(p.product_name_es || p.product_name || p.generic_name_es || p.generic_name);
+  if (!nombreBase) return null;
+  const marca = limpiar((p.brands || "").split(",")[0]);
+  const cantidad = limpiar(p.quantity);
+  const nombre = [capital(nombreBase), marca && !nombreBase.toLowerCase().includes(marca.toLowerCase()) ? marca : "", cantidad].filter(Boolean).join(" ");
+  return { nombre, marca, cantidadTxt: cantidad, categoria: categoriaDesde(p.categories_tags, base), unidad: unidadDesde(cantidad), imagen: p.image_front_small_url || p.image_small_url || "", fuente: host.replace("world.", "").replace(".org", "") };
+}
+
+async function deUpcItemDb(c) {
+  const r = await fetch(`https://api.upcitemdb.com/prod/trial/lookup?upc=${encodeURIComponent(c)}`);
+  if (!r.ok) return null;
+  const it = (await r.json()).items?.[0];
+  if (!it?.title) return null;
+  return { nombre: limpiar(it.title), marca: limpiar(it.brand), categoria: "Almacén", unidad: "u", imagen: it.images?.[0] || "", fuente: "upcitemdb" };
+}
+
+// devuelve el primer resultado que encuentre, probando todas las fuentes a la vez
+function primeroQueEncuentre(promesas) {
+  return new Promise(ok => {
+    let pend = promesas.length;
+    if (!pend) ok(null);
+    for (const p of promesas) p.then(r => { if (r) ok(r); else if (--pend === 0) ok(null); }, () => { if (--pend === 0) ok(null); });
+  });
+}
+
+const cacheCodigos = new Map();
+async function identificar(codigo) {
+  if (cacheCodigos.has(codigo)) return cacheCodigos.get(codigo);
+  const cs = variantes(codigo);
+  let r = await conTiempo(primeroQueEncuentre(cs.map(c => deCatalogo(c))), 4000).catch(() => null);
+  if (!r) {
+    const fuentes = [];
+    for (const c of cs) {
+      fuentes.push(deOpenFacts(c, "world.openfoodfacts.org", "food"));
+      fuentes.push(deOpenFacts(c, "world.openbeautyfacts.org", "beauty"));
+      fuentes.push(deOpenFacts(c, "world.openproductsfacts.org", "products"));
+      fuentes.push(deOpenFacts(c, "world.openpetfoodfacts.org", "pet"));
+    }
+    r = await conTiempo(primeroQueEncuentre(fuentes)).catch(() => null);
+    if (!r) r = await conTiempo(deUpcItemDb(codigo), 5000).catch(() => null);
+  }
+  cacheCodigos.set(codigo, r);
+  return r;
+}
+
+async function completarDesdeCodigo(codigo) {
+  const box = $("#lookupBox");
+  nombreTocado = !!$("#f-nombre").value.trim();
+  box.innerHTML = `<div class="lookup"><div class="spin"></div><span>Buscando qué producto es…</span></div>`;
+  box.hidden = false;
+  const r = await identificar(codigo);
+  if ($("#f-codigo").value.trim() !== codigo || !$("#dlg").open) return;   // ya cambió de producto
+  if (!r) {
+    box.innerHTML = `<div class="lookup no"><span><b>No lo encontré en las bases de productos.</b> Escribí el nombre una vez y la próxima vez que lo escanees (vos o tu familia) la app ya lo reconoce.</span></div>`;
+    if (!nombreTocado) $("#f-nombre").focus();
+    return;
+  }
+  if (!nombreTocado) { $("#f-nombre").value = r.nombre; revisarDuplicados(); }
+  if (!editId) {
+    if (r.categoria && CATS.includes(r.categoria)) $("#f-categoria").value = r.categoria;
+    if (r.unidad && UNID.includes(r.unidad)) $("#f-unidad").value = r.unidad;
+    if (r.categoria === "Limpieza") $("#f-ubicacion").value = "Lavadero";
+    else if (r.categoria === "Higiene") $("#f-ubicacion").value = "Baño";
+    else if (r.categoria === "Lácteos") $("#f-ubicacion").value = "Heladera";
+    else if (r.categoria === "Congelados" || r.categoria === "Carnes") $("#f-ubicacion").value = "Freezer";
+  }
+  box.innerHTML = `<div class="lookup ok">${r.imagen ? `<img src="${esc(r.imagen)}" alt="" referrerpolicy="no-referrer">` : ""}
+    <span><b>${esc(r.nombre)}</b><small>Encontrado en ${esc(r.fuente)}. Revisá el nombre y la categoría, y guardá.</small></span></div>`;
+}
+
+// cuando alguien guarda un producto con código, queda en el catálogo compartido de la app
+function aprenderCodigo(data) {
+  if (!data.codigo || !data.nombre) return;
+  setDoc(doc(db, "catalogo", data.codigo), { nombre: data.nombre.slice(0, 120), categoria: data.categoria, unidad: data.unidad, por: user.uid, ts: serverTimestamp() }).catch(() => {});
+  cacheCodigos.set(data.codigo, { nombre: data.nombre, categoria: data.categoria, unidad: data.unidad, fuente: "tu catálogo" });
 }
 
 function abrirRapido(id) {
