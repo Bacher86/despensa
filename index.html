@@ -174,6 +174,25 @@ dialog::backdrop{background:rgba(0,0,0,.45)}
 .quick-qty{font:800 2.6rem/1 var(--f-display);text-align:center;font-variant-numeric:tabular-nums}
 .quick-qty small{font:400 1rem var(--f-body);color:var(--muted)}
 
+/* login y bienvenida */
+.gate-card strong{font:600 1.05rem var(--f-display)}
+.gate-form{display:grid;gap:12px}
+.gate-form .field input{background:var(--surface)}
+.sep{display:flex;align-items:center;gap:10px;color:var(--muted);font-size:.85rem}
+.sep::before,.sep::after{content:"";flex:1;height:1px;background:var(--line)}
+.seg{display:grid;grid-template-columns:1fr 1fr;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:3px;gap:3px}
+.seg button{border:0;background:none;border-radius:9px;padding:8px;font-weight:700;color:var(--muted)}
+.seg button[aria-pressed="true"]{background:var(--accent-soft);color:var(--ink)}
+.linkbtn{border:0;background:none;color:var(--accent);font-weight:700;padding:6px;justify-self:center;text-decoration:underline;text-underline-offset:3px}
+.info{background:var(--accent-soft);color:var(--ink);border-radius:12px;padding:12px 14px;font-weight:700}
+.inline input{padding:11px 12px;border-radius:10px;border:1px solid var(--line);background:var(--bg)}
+.members{display:grid;gap:1px;background:var(--line);border-radius:10px;overflow:hidden;border:1px solid var(--line)}
+.member{display:flex;justify-content:space-between;align-items:center;gap:10px;background:var(--surface);padding:10px 12px}
+.member div{min-width:0;display:grid}
+.member .row-meta{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.inv-link{background:var(--bg);border-radius:10px;padding:10px 12px;font-size:.88rem;overflow-wrap:anywhere;user-select:all;font-variant-numeric:tabular-nums}
+.inv-code{font:800 1.3rem var(--f-display);letter-spacing:.12em}
+
 .toast{position:fixed;left:50%;bottom:calc(150px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:12px;font-weight:700;z-index:50;max-width:calc(100% - 32px)}
 .err{background:var(--bad-bg);color:var(--bad);border-radius:12px;padding:12px 14px;font-weight:700}
 </style>
@@ -183,9 +202,48 @@ dialog::backdrop{background:rgba(0,0,0,.45)}
 <section class="gate" id="gate" hidden>
   <div class="gate-card">
     <h1>Despensa de Casa</h1>
-    <p>Lo que hay en casa, lo que se está acabando, la lista del súper y cuánto se gasta, sincronizado entre los teléfonos de la casa.</p>
-    <button class="btn full" id="btnLogin">Entrar con Google</button>
+    <p>Lo que hay en casa, lo que se está acabando, la lista del súper y cuánto se gasta, sincronizado entre los teléfonos de la familia.</p>
+    <div class="info" id="invAviso" hidden>Te invitaron a una casa. Entrá o creá tu cuenta y te sumamos.</div>
+    <button class="btn full" id="btnLogin">
+      <svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true"><path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.7 32.7 29.2 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3 0 5.8 1.1 7.9 3l5.7-5.7C34 6.1 29.3 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.4-.4-3.5z"/><path fill="#FF3D00" d="m6.3 14.7 6.6 4.8C14.7 15.1 19 12 24 12c3 0 5.8 1.1 7.9 3l5.7-5.7C34 6.1 29.3 4 24 4 16.3 4 9.7 8.3 6.3 14.7z"/><path fill="#4CAF50" d="M24 44c5.2 0 9.9-2 13.4-5.2l-6.2-5.2C29.2 35.1 26.7 36 24 36c-5.2 0-9.6-3.3-11.3-7.9l-6.5 5C9.5 39.6 16.2 44 24 44z"/><path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.2-2.2 4.2-4.1 5.6l6.2 5.2C37 39.2 44 34 44 24c0-1.3-.1-2.4-.4-3.5z"/></svg>
+      Entrar con Google
+    </button>
+    <div class="sep"><span>o con tu mail</span></div>
+    <div class="seg" role="tablist">
+      <button type="button" data-modo="entrar" aria-pressed="true">Ya tengo cuenta</button>
+      <button type="button" data-modo="crear" aria-pressed="false">Crear cuenta</button>
+    </div>
+    <form class="gate-form" id="frmMail">
+      <label class="field" id="campoNombre" hidden><span>Tu nombre</span><input id="m-nombre" autocomplete="name" placeholder="Ej: Marta"></label>
+      <label class="field"><span>Mail</span><input id="m-mail" type="email" required autocomplete="email"></label>
+      <label class="field"><span>Contraseña</span><input id="m-pass" type="password" required minlength="6" autocomplete="current-password" placeholder="Mínimo 6 caracteres"></label>
+      <button class="btn full" type="submit" id="btnMail">Entrar</button>
+      <button class="linkbtn" type="button" id="btnOlvide">Me olvidé la contraseña</button>
+    </form>
     <div class="err" id="gateErr" hidden></div>
+  </div>
+</section>
+
+<section class="gate" id="onb" hidden>
+  <div class="gate-card">
+    <h1 id="onbHola">Hola</h1>
+    <div class="err" id="onbErr" hidden></div>
+    <div class="panel" id="onbInv" hidden>
+      <strong>Te invitaron a <span id="onbInvCasa"></span></strong>
+      <p>Vas a ver y editar la misma despensa y la misma lista que el resto de la casa.</p>
+      <button class="btn" id="btnUnirse">Unirme</button>
+    </div>
+    <div class="panel">
+      <strong>Tengo un link o código</strong>
+      <p>Pedíselo a alguien de la casa. Lo genera desde Más → Invitar a la familia.</p>
+      <form class="inline" id="frmCodigo"><input id="o-codigo" placeholder="Pegá el link o el código" autocomplete="off"><button class="btn sm" type="submit">Unirme</button></form>
+    </div>
+    <div class="panel">
+      <strong>Crear una casa nueva</strong>
+      <p>Empezás con la despensa vacía y después invitás a tu familia.</p>
+      <form class="inline" id="frmCasa"><input id="o-nombre" placeholder="Nombre de la casa" autocomplete="off"><button class="btn sm" type="submit">Crear</button></form>
+    </div>
+    <button class="linkbtn" id="btnSalir2">Cerrar sesión</button>
   </div>
 </section>
 
@@ -230,6 +288,17 @@ dialog::backdrop{background:rgba(0,0,0,.45)}
     </section>
 
     <section id="v-mas" hidden>
+      <h2>Tu casa</h2>
+      <div class="panel">
+        <form class="inline" id="frmRenombrar"><input id="casaNombre" aria-label="Nombre de la casa" autocomplete="off"><button class="btn ghost sm" type="submit">Renombrar</button></form>
+        <div id="miembros" class="members"></div>
+      </div>
+      <h2>Invitar a la familia</h2>
+      <div class="panel">
+        <p>Mandá este link por WhatsApp. Quien lo abra crea su cuenta (con Google o con mail) y queda adentro de la casa. Vale 30 días; si generás uno nuevo, el anterior deja de andar.</p>
+        <div id="invBox"></div>
+        <button class="btn" id="btnInvitar">Crear link de invitación</button>
+      </div>
       <h2>Copia de seguridad</h2>
       <div class="panel">
         <p>Todo se guarda en Firebase y funciona sin conexión. Además podés bajar una copia completa (productos, compras e historial) y restaurarla cuando quieras.</p>
@@ -246,6 +315,7 @@ dialog::backdrop{background:rgba(0,0,0,.45)}
       <div class="panel">
         <p id="cuenta"></p>
         <button class="btn ghost" id="btnLogout">Cerrar sesión</button>
+        <button class="btn danger" id="btnDejar">Salir de esta casa</button>
       </div>
     </section>
   </main>
@@ -347,8 +417,8 @@ dialog::backdrop{background:rgba(0,0,0,.45)}
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/13.0.0/firebase-app.js";
-import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/13.0.0/firebase-auth.js";
-import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager, collection, doc, onSnapshot, addDoc, updateDoc, deleteDoc, setDoc, increment, serverTimestamp, writeBatch, deleteField, query, where, orderBy, Timestamp } from "https://www.gstatic.com/firebasejs/13.0.0/firebase-firestore.js";
+import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect, onAuthStateChanged, signOut, createUserWithEmailAndPassword, signInWithEmailAndPassword, sendPasswordResetEmail, updateProfile } from "https://www.gstatic.com/firebasejs/13.0.0/firebase-auth.js";
+import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager, collection, doc, getDoc, onSnapshot, addDoc, updateDoc, deleteDoc, setDoc, increment, serverTimestamp, writeBatch, deleteField, query, where, orderBy, Timestamp } from "https://www.gstatic.com/firebasejs/13.0.0/firebase-firestore.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyDg0svGUiA37wOkrs31ROHMfx-OieBG6Xo",
@@ -362,10 +432,11 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = initializeFirestore(app, { localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }) });
-const casaDoc = () => doc(db, "hogar", "casa");
-const itemsCol = () => collection(db, "hogar", "casa", "items");
-const movsCol = () => collection(db, "hogar", "casa", "movimientos");
-const comprasCol = () => collection(db, "hogar", "casa", "compras");
+let casaId = null;
+const casaDoc = () => doc(db, "hogar", casaId);
+const itemsCol = () => collection(db, "hogar", casaId, "items");
+const movsCol = () => collection(db, "hogar", casaId, "movimientos");
+const comprasCol = () => collection(db, "hogar", casaId, "compras");
 
 const CATS = ["Carnes", "Lácteos", "Almacén", "Verdulería", "Congelados", "Bebidas", "Limpieza", "Higiene", "Mascotas", "Otros"];
 const UBIC = ["Alacena", "Heladera", "Freezer", "Baño", "Lavadero", "Otro"];
@@ -381,7 +452,7 @@ const ms = t => t?.toMillis ? t.toMillis() : typeof t === "number" ? t : Date.no
 const catDe = it => CATS.includes(it.categoria) ? it.categoria : "Otros";
 const hace = t => { const d = Math.floor((Date.now() - ms(t)) / DIA); return d <= 0 ? "hoy" : d === 1 ? "ayer" : `hace ${d} días`; };
 
-let user = null, items = [], movs = [], compras = [], config = {};
+let user = null, items = [], movs = [], compras = [], config = {}, miembros = [];
 let tab = "despensa", cat = "Todas", busca = "", subs = [], editId = null, confirmDel = false, rapidoId = null;
 let tasas = new Map();
 
@@ -406,51 +477,243 @@ function calcTasas() {
 }
 const diasRestan = it => { const t = tasas.get(it.id); return t ? num(it.cantidad) / t : null; };
 
-/* ---------- auth ---------- */
+/* ---------- cuentas ---------- */
+const MSG_AUTH = {
+  "auth/invalid-credential": "Mail o contraseña incorrectos.",
+  "auth/wrong-password": "Mail o contraseña incorrectos.",
+  "auth/user-not-found": "No hay ninguna cuenta con ese mail. Tocá Crear cuenta.",
+  "auth/email-already-in-use": "Ya existe una cuenta con ese mail. Tocá Ya tengo cuenta.",
+  "auth/weak-password": "La contraseña tiene que tener al menos 6 caracteres.",
+  "auth/invalid-email": "Ese mail no es válido.",
+  "auth/too-many-requests": "Demasiados intentos. Esperá unos minutos y probá de nuevo.",
+  "auth/network-request-failed": "Sin conexión. Revisá internet y probá de nuevo.",
+  "auth/operation-not-allowed": "Este tipo de cuenta no está activado en Firebase (Authentication → Método de inicio de sesión).",
+  "auth/unauthorized-domain": "Este sitio todavía no está autorizado en Firebase. Agregá el dominio en Authentication → Configuración → Dominios autorizados.",
+};
+const errGate = e => { const el = $("#gateErr"); el.textContent = MSG_AUTH[e.code] || "No se pudo entrar: " + (e.message || e.code); el.hidden = false; };
+
 $("#btnLogin").onclick = async () => {
+  $("#gateErr").hidden = true;
   const p = new GoogleAuthProvider();
   try { await signInWithPopup(auth, p); }
   catch (e) {
     if (["auth/popup-blocked", "auth/operation-not-supported-in-this-environment"].includes(e.code)) await signInWithRedirect(auth, p);
-    else if (e.code !== "auth/popup-closed-by-user" && e.code !== "auth/cancelled-popup-request") {
-      const el = $("#gateErr");
-      el.textContent = e.code === "auth/unauthorized-domain"
-        ? "Este sitio todavía no está autorizado en Firebase. Agregá el dominio en Authentication → Configuración → Dominios autorizados."
-        : "No se pudo entrar: " + (e.message || e.code);
-      el.hidden = false;
-    }
+    else if (e.code !== "auth/popup-closed-by-user" && e.code !== "auth/cancelled-popup-request") errGate(e);
   }
 };
-$("#btnLogout").onclick = () => signOut(auth);
 
-function errorBase(err) {
-  const el = $("#appErr");
-  el.textContent = err.code === "permission-denied"
-    ? `La cuenta ${user?.email} no tiene acceso a esta casa. Agregá ese mail en las reglas de Firestore.`
-    : "Error de conexión con la base: " + err.message;
-  el.hidden = false;
+let modoMail = "entrar";
+for (const b of document.querySelectorAll(".seg button")) b.onclick = () => {
+  modoMail = b.dataset.modo;
+  for (const x of document.querySelectorAll(".seg button")) x.setAttribute("aria-pressed", x === b);
+  $("#campoNombre").hidden = modoMail !== "crear";
+  $("#btnMail").textContent = modoMail === "crear" ? "Crear cuenta" : "Entrar";
+  $("#m-pass").autocomplete = modoMail === "crear" ? "new-password" : "current-password";
+  $("#btnOlvide").hidden = modoMail === "crear";
+  $("#gateErr").hidden = true;
+};
+$("#frmMail").addEventListener("submit", async e => {
+  e.preventDefault();
+  $("#gateErr").hidden = true;
+  const mail = $("#m-mail").value.trim(), pass = $("#m-pass").value;
+  try {
+    if (modoMail === "crear") {
+      const nombre = $("#m-nombre").value.trim();
+      const cred = await createUserWithEmailAndPassword(auth, mail, pass);
+      if (nombre) {
+        await updateProfile(cred.user, { displayName: nombre });
+        $("#o-nombre").value = "";
+        if (!$("#onb").hidden) mostrarOnb("", invActual);
+      }
+    } else await signInWithEmailAndPassword(auth, mail, pass);
+  } catch (err) { errGate(err); }
+});
+$("#btnOlvide").onclick = async () => {
+  const mail = $("#m-mail").value.trim();
+  if (!mail) { errGate({ message: "Escribí tu mail arriba y tocá de nuevo." }); return; }
+  try { await sendPasswordResetEmail(auth, mail); toast("Te mandamos un mail para cambiar la contraseña"); }
+  catch (err) { errGate(err); }
+};
+$("#btnLogout").onclick = () => signOut(auth);
+$("#btnSalir2").onclick = () => signOut(auth);
+
+/* ---------- casas e invitaciones ---------- */
+const ALFA = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+const nuevoCodigo = () => Array.from(crypto.getRandomValues(new Uint32Array(10)), n => ALFA[n % ALFA.length]).join("");
+const linkInv = c => `${location.origin}${location.pathname}?inv=${c}`;
+const leerCodigo = txt => { const t = String(txt || "").trim(); const m = t.match(/[?&]inv=([A-Za-z0-9]+)/); return (m ? m[1] : t).toUpperCase().replace(/[^A-Z0-9]/g, ""); };
+const nombreUsuario = () => user?.displayName || (user?.email || "").split("@")[0];
+const perfilRef = () => doc(db, "usuarios", user.uid);
+
+function invGuardada() {
+  const url = new URLSearchParams(location.search).get("inv");
+  try { if (url) sessionStorage.setItem("inv", url); return url || sessionStorage.getItem("inv"); } catch { return url; }
+}
+function olvidarInv() {
+  try { sessionStorage.removeItem("inv"); } catch {}
+  if (location.search.includes("inv=")) history.replaceState(null, "", location.pathname);
+}
+$("#invAviso").hidden = !invGuardada();
+
+function pantalla(cual) { for (const id of ["gate", "onb", "app"]) $("#" + id).hidden = id !== cual; }
+function cerrarSubs() { subs.forEach(f => f()); subs = []; }
+
+let invActual = null;
+function mostrarOnb(error = "", inv = null) {
+  cerrarSubs(); casaId = null; invActual = inv;
+  pantalla("onb");
+  $("#onbHola").textContent = `Hola, ${nombreUsuario().split(" ")[0]}`;
+  $("#onbErr").textContent = error; $("#onbErr").hidden = !error;
+  $("#onbInv").hidden = !inv;
+  if (inv) $("#onbInvCasa").textContent = inv.casaNombre || "una casa";
+  if (!$("#o-nombre").value) $("#o-nombre").value = `Casa de ${nombreUsuario().split(" ")[0]}`;
 }
 
-onAuthStateChanged(auth, u => {
+async function buscarInvitacion(codigo) {
+  if (!codigo) return { error: "Escribí o pegá el código." };
+  try {
+    const s = await getDoc(doc(db, "invitaciones", codigo));
+    if (!s.exists()) return { error: "Ese link o código no existe o ya fue reemplazado. Pedí uno nuevo." };
+    const d = s.data();
+    if (ms(d.expira) < Date.now()) return { error: "Esa invitación venció. Pedí un link nuevo." };
+    return { inv: { codigo, ...d } };
+  } catch (e) { return { error: "No se pudo revisar la invitación: " + e.message }; }
+}
+
+async function unirse(inv) {
+  const b = writeBatch(db);
+  b.set(doc(db, "hogar", inv.casa, "miembros", user.uid), { nombre: nombreUsuario(), email: user.email || "", rol: "miembro", codigo: inv.codigo, desde: serverTimestamp() });
+  b.set(perfilRef(), { casa: inv.casa }, { merge: true });
+  try { await b.commit(); } catch (e) { mostrarOnb("No se pudo entrar a la casa: " + e.message, inv); return; }
+  olvidarInv();
+  entrarCasa(inv.casa);
+  toast(`Te uniste a ${inv.casaNombre || "la casa"}`);
+}
+
+$("#btnUnirse").onclick = () => invActual && unirse(invActual);
+$("#frmCodigo").addEventListener("submit", async e => {
+  e.preventDefault();
+  const r = await buscarInvitacion(leerCodigo($("#o-codigo").value));
+  if (r.error) mostrarOnb(r.error); else unirse(r.inv);
+});
+$("#frmCasa").addEventListener("submit", async e => {
+  e.preventDefault();
+  const nombre = $("#o-nombre").value.trim() || "Mi casa";
+  const id = doc(collection(db, "hogar")).id;
+  const b = writeBatch(db);
+  b.set(doc(db, "hogar", id), { nombre, creador: user.uid, creado: serverTimestamp() });
+  b.set(doc(db, "hogar", id, "miembros", user.uid), { nombre: nombreUsuario(), email: user.email || "", rol: "admin", desde: serverTimestamp() });
+  b.set(perfilRef(), { casa: id }, { merge: true });
+  try { await b.commit(); } catch (err) { mostrarOnb("No se pudo crear la casa: " + err.message); return; }
+  entrarCasa(id);
+  toast("Casa creada. Invitá a tu familia desde Más.");
+});
+
+onAuthStateChanged(auth, async u => {
   user = u;
-  subs.forEach(f => f()); subs = [];
-  $("#gate").hidden = !!u; $("#app").hidden = !u;
-  if (!u) return;
-  $("#cuenta").textContent = `Conectado como ${u.email}`;
+  cerrarSubs();
+  if (!u) { casaId = null; pantalla("gate"); return; }
+  let perfil = {};
+  try { perfil = (await getDoc(doc(db, "usuarios", u.uid))).data() || {}; } catch {}
+  const codigo = invGuardada();
+  if (codigo) {
+    const r = await buscarInvitacion(leerCodigo(codigo));
+    if (r.error) { olvidarInv(); perfil.casa ? (entrarCasa(perfil.casa), toast(r.error)) : mostrarOnb(r.error); return; }
+    if (r.inv.casa === perfil.casa) { olvidarInv(); entrarCasa(perfil.casa); return; }
+    mostrarOnb("", r.inv); return;
+  }
+  if (perfil.casa) entrarCasa(perfil.casa); else mostrarOnb();
+});
+
+function sinAcceso(err) {
+  if (!casaId) return;
+  if (err.code === "permission-denied") { mostrarOnb("Ya no tenés acceso a esa casa. Unite con un link nuevo o creá otra."); return; }
+  const el = $("#appErr"); el.textContent = "Error de conexión con la base: " + err.message; el.hidden = false;
+}
+
+function entrarCasa(id) {
+  cerrarSubs();
+  casaId = id; items = []; movs = []; compras = []; config = {}; miembros = [];
+  pantalla("app"); tab = "despensa"; render();
+  $("#cuenta").textContent = `Conectado como ${user.email || nombreUsuario()}`;
   const opt = { serverTimestamps: "estimate" };
   subs.push(onSnapshot(itemsCol(), s => {
     items = s.docs.map(d => ({ id: d.id, ...d.data(opt) })).sort((a, b) => (a.nombre || "").localeCompare(b.nombre || "", "es"));
     $("#appErr").hidden = true; render();
-  }, errorBase));
+  }, sinAcceso));
   subs.push(onSnapshot(query(movsCol(), where("ts", ">=", Timestamp.fromMillis(Date.now() - 90 * DIA)), orderBy("ts", "desc")), s => {
     movs = s.docs.map(d => ({ id: d.id, ...d.data(opt) })); calcTasas(); render();
-  }, errorBase));
+  }, sinAcceso));
   const desde = new Date(); desde.setMonth(desde.getMonth() - 11, 1); desde.setHours(0, 0, 0, 0);
   subs.push(onSnapshot(query(comprasCol(), where("fecha", ">=", Timestamp.fromDate(desde)), orderBy("fecha", "desc")), s => {
     compras = s.docs.map(d => ({ id: d.id, ...d.data(opt) })); if (tab === "gastos") renderGastos();
-  }, errorBase));
-  subs.push(onSnapshot(casaDoc(), s => { config = s.data() || {}; if (tab === "gastos") renderGastos(); }, errorBase));
+  }, sinAcceso));
+  subs.push(onSnapshot(casaDoc(), s => { config = s.data() || {}; if (tab === "gastos") renderGastos(); renderCasa(); }, sinAcceso));
+  subs.push(onSnapshot(collection(db, "hogar", id, "miembros"), s => {
+    miembros = s.docs.map(d => ({ id: d.id, ...d.data(opt) })).sort((a, b) => ms(a.desde) - ms(b.desde));
+    renderCasa();
+  }, sinAcceso));
+}
+
+/* ---------- pestaña Más: casa, familia, invitación ---------- */
+let quitarId = null, confirmDejar = false;
+function renderCasa() {
+  const inp = $("#casaNombre");
+  if (document.activeElement !== inp) inp.value = config.nombre || "";
+  const soyAdmin = config.creador === user?.uid;
+  $("#miembros").innerHTML = miembros.map(m => `
+    <div class="member"><div><span class="row-name">${esc(m.nombre || "Sin nombre")}${m.id === user.uid ? " (vos)" : ""}</span>
+      <span class="row-meta">${m.id === config.creador ? "Creó la casa · " : ""}${esc(m.email)}</span></div>
+      ${soyAdmin && m.id !== user.uid ? `<button class="btn ghost sm" data-quitar="${m.id}">${quitarId === m.id ? "Confirmar" : "Quitar"}</button>` : ""}
+    </div>`).join("");
+  const c = config.invitacion;
+  $("#invBox").innerHTML = c ? `<div class="inv-link">${esc(linkInv(c))}</div>
+    <div class="row-meta">Código: <span class="inv-code">${esc(c)}</span></div>
+    <div class="actions" style="margin-top:0">
+      <button class="btn ghost" data-copiarinv>Copiar link</button>
+      <a class="btn ghost" target="_blank" rel="noopener" href="https://wa.me/?text=${encodeURIComponent(`Te invito a la despensa de ${config.nombre || "casa"} 🏠. Entrá desde acá y creá tu cuenta: ${linkInv(c)}`)}">WhatsApp</a>
+    </div>` : "";
+  $("#btnInvitar").textContent = c ? "Generar link nuevo" : "Crear link de invitación";
+}
+
+$("#btnInvitar").onclick = async () => {
+  const codigo = nuevoCodigo();
+  const b = writeBatch(db);
+  if (config.invitacion) b.delete(doc(db, "invitaciones", config.invitacion));
+  b.set(doc(db, "invitaciones", codigo), { casa: casaId, casaNombre: config.nombre || "Casa", por: user.uid, creada: serverTimestamp(), expira: Timestamp.fromMillis(Date.now() + 30 * DIA) });
+  b.update(casaDoc(), { invitacion: codigo });
+  try { await b.commit(); toast("Link listo para compartir"); } catch (e) { toast("No se pudo crear el link: " + e.message); }
+};
+$("#frmRenombrar").addEventListener("submit", async e => {
+  e.preventDefault();
+  const n = $("#casaNombre").value.trim(); if (!n) return;
+  const b = writeBatch(db);
+  b.update(casaDoc(), { nombre: n });
+  if (config.invitacion) b.update(doc(db, "invitaciones", config.invitacion), { casaNombre: n });
+  await b.commit(); $("#casaNombre").blur(); toast("Nombre guardado");
 });
+document.addEventListener("click", async e => {
+  const t = e.target.closest("[data-quitar],[data-copiarinv]"); if (!t) return;
+  if ("copiarinv" in t.dataset) {
+    try { await navigator.clipboard.writeText(linkInv(config.invitacion)); toast("Link copiado"); } catch { toast("No se pudo copiar, mantené apretado el link"); }
+    return;
+  }
+  const id = t.dataset.quitar;
+  if (quitarId !== id) { quitarId = id; renderCasa(); return; }
+  quitarId = null;
+  try { await deleteDoc(doc(db, "hogar", casaId, "miembros", id)); toast("Quitado. Generá un link nuevo para que no pueda volver a entrar con el anterior."); } catch (err) { toast("No se pudo quitar: " + err.message); }
+});
+$("#btnDejar").onclick = async () => {
+  if (!confirmDejar) { confirmDejar = true; $("#btnDejar").textContent = "Tocá de nuevo para salir de la casa"; return; }
+  confirmDejar = false; $("#btnDejar").textContent = "Salir de esta casa";
+  const id = casaId;
+  cerrarSubs();
+  const b = writeBatch(db);
+  b.delete(doc(db, "hogar", id, "miembros", user.uid));
+  b.set(perfilRef(), { casa: deleteField() }, { merge: true });
+  try { await b.commit(); } catch {}
+  mostrarOnb();
+};
 
 /* ---------- render ---------- */
 function render() {
@@ -877,7 +1140,7 @@ $("#fileImport").onchange = async e => {
       b.set(id ? doc(col(), id) : doc(col()), revivir(r), { merge: true }); n++;
       if (++enLote === 400) { await b.commit(); b = writeBatch(db); enLote = 0; }
     }
-    if (json.config) b.set(casaDoc(), json.config, { merge: true });
+    if (json.config) { const { creador, invitacion, nombre, ...resto } = json.config; b.set(casaDoc(), resto, { merge: true }); }
     await b.commit();
     toast(`Restaurados ${n} registros`);
   } catch (err) { toast("Archivo inválido: " + err.message); }
