@@ -633,6 +633,10 @@ dialog::backdrop{background:rgba(0,0,0,.45)}
         <p>Carga una despensa típica (detergente, jabón, papel higiénico, carne, pollo…) para que después ajustes las cantidades reales.</p>
         <button class="btn ghost" id="btnSeed">Cargar productos de ejemplo</button>
       </div>
+      <div class="panel" id="adminBox" hidden>
+        <p><b>Sos administrador.</b> Mirá cuántos usuarios hay, de qué barrios y cuánto usan la app.</p>
+        <a class="btn" href="admin.html" target="_blank" rel="noopener">Abrir panel de administración</a>
+      </div>
       <h2>Tus datos</h2>
       <div class="panel">
         <p id="cuenta"></p>
@@ -1232,9 +1236,24 @@ onAuthStateChanged(auth, async u => {
   else await crearCasa(`Casa de ${perfil.nombre || nombreUsuario().split(" ")[0]}`);
 });
 
+/* ---------- estadísticas de uso (una vez por día) y acceso al panel ---------- */
+function registrarVisita() {
+  if (!user) return;
+  const k = "visto:" + user.uid, hoy = new Date().toISOString().slice(0, 10);
+  if (lsGet(k) === hoy) return;
+  lsSet(k, hoy);
+  const plataforma = /android/i.test(navigator.userAgent) ? "android" : esIOS() ? "ios" : "compu";
+  setDoc(perfilRef(), { visto: serverTimestamp(), plataforma, instalada: yaInstalada() }, { merge: true }).catch(() => {});
+}
+function revisarAdmin() {
+  if (!user) return;
+  getDoc(doc(db, "admin", "acceso")).then(() => { $("#adminBox").hidden = false; }).catch(() => { $("#adminBox").hidden = true; });
+}
+
 /* ---------- mis datos (Más) ---------- */
 function renderCuenta() {
   if (!user) return;
+  revisarAdmin();
   $("#btnRecoWa").href = "https://wa.me/?text=" + encodeURIComponent(textoRecomendar());
   const p = perfil;
   $("#cuenta").innerHTML = p.nombre ? `<b>${esc(p.nombre)} ${esc(p.apellido)}</b><br>DNI ••••${esc(String(p.dni || "").slice(-3))} · ${esc(p.barrio)}, ${esc(p.provincia)}<br>${esc(user.email || "")}`
@@ -1303,6 +1322,7 @@ function entrarCasa(id) {
   pantalla("app"); tab = ["lista", "cocinar", "gastos", "mas"].includes(tabUrl) ? tabUrl : "despensa"; render();
   if (tabUrl) history.replaceState(null, "", location.pathname);
   renderCuenta();
+  registrarVisita();
   const opt = { serverTimestamps: "estimate" };
   subs.push(onSnapshot(itemsCol(), s => {
     items = s.docs.map(d => ({ id: d.id, ...d.data(opt) })).sort((a, b) => (a.nombre || "").localeCompare(b.nombre || "", "es"));
