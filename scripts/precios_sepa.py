@@ -10,11 +10,18 @@ lo lea. Lo corre una GitHub Action una vez por día.
 Uso:  python scripts/precios_sepa.py [--zip archivo.zip] [--salida precios.json]
 Solo usa la biblioteca estándar de Python.
 """
-import argparse, csv, io, json, os, re, statistics, sys, time, unicodedata, urllib.request, zipfile
+import argparse, csv, io, json, os, re, shutil, statistics, subprocess, sys, time, unicodedata, urllib.request, zipfile
 from datetime import date, datetime, timedelta
 
 CKAN = "https://datos.produccion.gob.ar/api/3/action/package_show?id=sepa-precios"
-UA = {"User-Agent": "DespensaDeCasa/1.0 (precios de referencia; datos abiertos SEPA)"}
+# El portal rechaza (403) los pedidos que no parecen de un navegador, así que nos presentamos como uno.
+UA = {
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36",
+    "Accept": "text/html,application/json,application/zip,application/xhtml+xml,*/*;q=0.8",
+    "Accept-Language": "es-AR,es;q=0.9",
+    "Referer": "https://datos.produccion.gob.ar/dataset/sepa-precios",
+}
+CKAN_ALT = "https://datos.produccion.gob.ar/api/action/package_show?id=sepa-precios"
 
 # Cadenas que mostramos. Se reconocen por el nombre de la bandera, la razón social o la web.
 CADENAS = {
@@ -93,7 +100,29 @@ def log(*a):
     print(time.strftime("%H:%M:%S"), *a, flush=True)
 
 
-def bajar(url, destino=None, intentos=4):
+def fallar(msg):
+    """Muestra el motivo en el resumen de GitHub (Annotations) y corta."""
+    print(f"::error::{msg}", flush=True)
+    raise SystemExit(1)
+
+
+def con_curl(url, destino=None):
+    """Plan B: algunos portales aceptan curl aunque rechacen a Python."""
+    if not shutil.which("curl"):
+        return None
+    cmd = ["curl", "-sSL", "--fail", "--retry", "3", "--retry-delay", "10", "--max-time", "1800", "-A", UA["User-Agent"],
+           "-H", f"Accept: {UA['Accept']}", "-H", f"Accept-Language: {UA['Accept-Language']}", "-e", UA["Referer"], url]
+    if destino:
+        cmd[1:1] = ["-o", destino]
+    r = subprocess.run(cmd, capture_output=True, timeout=1900)
+    if r.returncode != 0:
+        log(f"  curl tampoco pudo: {r.stderr.decode(errors='replace').strip()[:200]}")
+        return None
+    return destino if destino else r.stdout
+
+
+def bajar(url, destino=None, intentos=3, obligatorio=True):
+    ultimo = None
     for i in range(intentos):
         try:
             req = urllib.request.Request(url, headers=UA)
@@ -108,21 +137,52 @@ def bajar(url, destino=None, intentos=4):
                         f.write(b)
                 return destino
         except Exception as e:
-            log(f"  intento {i + 1} falló: {e}")
-            time.sleep(10 * (i + 1))
-    raise SystemExit(f"No se pudo bajar {url}")
+            log(f"  intento {i + 1} de {intentos} falló: {e}")
+            ultimo = e
+            time.sleep(8 * (i + 1))
+    log("  pruebo con curl…")
+    r = con_curl(url, destino)
+    if r is not None:
+        return r
+    if not obligatorio:
+        return None
+    fallar(f"El portal de datos abiertos no deja bajar {url} ({ultimo}). Puede estar bloqueando a GitHub o caído: volvé a correrlo más tarde y, si sigue, avisá.")
+
+
+DIAS_ES = ["lunes", "martes", "miercoles", "jueves", "viernes", "sabado", "domingo"]
 
 
 def ultimo_zip():
-    datos = json.loads(bajar(CKAN))
-    recursos = [r for r in datos["result"]["resources"] if (r.get("format") or "").lower() == "zip" or str(r.get("url", "")).lower().endswith(".zip")]
+    """Busca el zip del día: primero por la API del portal; si falla, en la página del dataset."""
+    recursos = []
+    for api in (CKAN, CKAN_ALT):
+        crudo = bajar(api, intentos=2, obligatorio=False)
+        if not crudo:
+            continue
+        try:
+            datos = json.loads(crudo)
+            recursos = [dict(nombre=x.get("name") or "", url=x.get("url") or "", fecha=x.get("last_modified") or x.get("metadata_modified") or x.get("created") or "")
+                        for x in datos["result"]["resources"]
+                        if (x.get("format") or "").lower() == "zip" or str(x.get("url", "")).lower().endswith(".zip")]
+            log(f"API del portal: {len(recursos)} archivos zip")
+            break
+        except Exception as e:
+            log(f"Respuesta rara de la API ({e}): {crudo[:150]!r}")
     if not recursos:
-        raise SystemExit("El portal no tiene archivos zip en el dataset sepa-precios")
-    clave = lambda r: r.get("last_modified") or r.get("metadata_modified") or r.get("created") or ""
-    recursos.sort(key=clave, reverse=True)
-    r = recursos[0]
-    log(f"Archivo más reciente: {r.get('name')} ({clave(r)})")
-    return r["url"]
+        log("Pruebo con la página del dataset")
+        html = bajar("https://datos.produccion.gob.ar/dataset/sepa-precios").decode("utf-8", "replace")
+        urls = sorted(set(re.findall(r'href="([^"]+\.zip)"', html)))
+        recursos = [dict(nombre=os.path.basename(u), url=u if u.startswith("http") else "https://datos.produccion.gob.ar" + u, fecha="") for u in urls]
+        log(f"Página del dataset: {len(recursos)} archivos zip")
+    if not recursos:
+        fallar("No encontré el archivo de precios en el portal de datos abiertos (dataset sepa-precios).")
+    for r in recursos[:10]:
+        log(f"  · {r['nombre']} {r['fecha']}")
+    hoy = DIAS_ES[date.today().weekday()]
+    del_dia = [r for r in recursos if hoy in normal(r["nombre"] + " " + r["url"])]
+    elegido = sorted(del_dia or recursos, key=lambda r: r["fecha"], reverse=True)[0]
+    log(f"Uso: {elegido['nombre']} ({elegido['fecha'] or 'sin fecha'})")
+    return elegido["url"]
 
 
 def leer_csv(z, nombre):
@@ -361,10 +421,13 @@ def main():
         log(f"Bajando {url}")
         bajar(url, zp)
         log(f"Bajado: {os.path.getsize(zp) / 1e6:.0f} MB")
+        if not zipfile.is_zipfile(zp):
+            inicio = open(zp, "rb").read(300).decode("utf-8", "replace").replace("\n", " ")
+            fallar(f"Lo que bajó del portal no es un zip (puede estar en mantenimiento). Empieza así: {inicio[:160]}")
     valores, sucursales = procesar(zp)
     salida = armar_salida(valores, sucursales, anterior)
     if len(salida["productos"]) < 10:
-        raise SystemExit(f"Solo encontré {len(salida['productos'])} productos: algo cambió en el formato. No guardo nada.")
+        fallar(f"Solo encontré {len(salida['productos'])} productos de referencia: el formato de los archivos puede haber cambiado. Mirá en el registro las líneas 'Columnas detectadas' y 'Sucursales por cadena'. No guardé nada.")
     with open(a.salida, "w", encoding="utf-8") as f:
         json.dump(salida, f, ensure_ascii=False, separators=(",", ":"))
     log(f"Listo: {len(salida['productos'])} productos guardados en {a.salida} ({os.path.getsize(a.salida) / 1e3:.0f} KB)")
