@@ -12,19 +12,17 @@ permissions:
 
 jobs:
   precios:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 60
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
+      - uses: actions/checkout@v5
       - name: Bajar y procesar precios
-        run: python scripts/precios_sepa.py
+        run: python3 scripts/precios_sepa.py
       - name: Guardar precios.json
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898283+github-actions[bot]@users.noreply.github.com"
           git add precios.json
-          git diff --cached --quiet || git commit -m "Precios del día"
-          git push
+          git diff --cached --quiet && { echo "Sin cambios"; exit 0; }
+          git commit -m "Precios del día"
+          git push || { echo "::error::GitHub no dejó guardar precios.json. Andá a Settings → Actions → General → Workflow permissions, elegí 'Read and write permissions', guardá y volvé a correrlo."; exit 1; }
