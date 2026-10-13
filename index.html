@@ -3540,7 +3540,7 @@ function htmlInflacion() {
             ${f.pagado ? `<div class="pagaste"><span>Vos pagaste</span><span class="num">${pesos(f.pagado)} / ${UNI_REF[f.r.unidad]} · ${pct(f.pagado / f.r.mediana - 1, 0)} vs. promedio</span></div>` : ""}</div>
         </details>`).join("")}</div>`;
   }
-  if (PRECIOS) h += `<p class="hint" style="margin-top:8px">Precio típico por ${"kg o litro"} en las sucursales de cada cadena. Fuente: Precios Claros (SEPA), datos abiertos de la Secretaría de Comercio · actualizado ${fechaAct}. Los precios pueden variar en cada sucursal.</p>`;
+  if (PRECIOS) h += `<p class="hint" style="margin-top:8px">Precio típico por kilo o litro en cada cadena. Fuente: ${esc(PRECIOS.fuente_corta || "Precios Claros (SEPA), datos abiertos de la Secretaría de Comercio")} · actualizado ${fechaAct}. Los precios pueden variar según la sucursal.</p>`;
   return h;
 }
 
