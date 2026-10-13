@@ -2738,9 +2738,9 @@ function agregarALista(nombre, categoria = "Otros") {
 /* ---------- recetas: motor de sugerencias (sin IA, gratis y sin conexión) ----------
    Puntúa cada receta según: lo que hay y si alcanza, lo que vence, los básicos que siempre hay,
    reemplazos posibles, la hora del día, las favoritas de la casa y lo que se cocinó hace poco.   */
-let RECETAS = [], RECETAS_IA = [], recetasCargadas = false;
+let RECETAS = [], RECETAS_IA = [], recetasCargadas = false, recetasError = false;
 import("./recetas.js").then(m => { RECETAS = m.default; recetasCargadas = true; if (tab === "cocinar") renderCocinar(); })
-  .catch(() => { recetasCargadas = true; if (tab === "cocinar") renderCocinar(); });
+  .catch(() => { recetasCargadas = true; recetasError = true; if (tab === "cocinar") renderCocinar(); });
 
 const reReceta = c => new RegExp(`(^| )${c}(s|es)?( |$)`);
 const coincide = (it, ing) => { const n = normal(it.nombre); if (ing.no && new RegExp(ing.no).test(n)) return false; return ing.claves.some(c => reReceta(c).test(n)); };
@@ -2868,6 +2868,10 @@ function tarjetaReceta(e) {
 
 function renderCocinar() {
   if (!recetasCargadas) { $("#cocinar").innerHTML = `<div class="cargando"><div class="spin"></div>Cargando recetas…</div>`; return; }
+  if (recetasError || !RECETAS.length) {
+    $("#cocinar").innerHTML = `<div class="empty"><strong>No se pudieron cargar las recetas</strong><span>${navigator.onLine ? "Falta el archivo recetas.js en el sitio. Subilo a GitHub junto con index.html." : "Conectate a internet una vez para bajar las recetas; después funcionan sin señal."}</span><button class="btn" onclick="location.reload()">Reintentar</button></div>`;
+    return;
+  }
   const hist = historialRecetas();
   const evs = [...RECETAS, ...RECETAS_IA].map(r => evaluar(r, null, hist));
   const mom = momentoAhora();
