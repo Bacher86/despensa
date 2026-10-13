@@ -1,6 +1,6 @@
 // Service worker: permite instalar la app y abrirla rápido (y sin señal).
 // Si cambiás index.html, subí también este archivo con VERSION nueva para que los teléfonos se actualicen.
-const VERSION = "despensa-v13";
+const VERSION = "despensa-v14";
 const APP = ["./", "./index.html", "./recetas.js", "./manifest.webmanifest", "./icon-192.png", "./icon-512.png", "./apple-touch-icon.png"];
 
 // Librerías externas que conviene guardar en el teléfono (Firebase, fuentes, escáner)
