@@ -10,7 +10,7 @@ lo lea. Lo corre una GitHub Action una vez por día.
 Uso:  python scripts/precios_sepa.py [--zip archivo.zip] [--salida precios.json]
 Solo usa la biblioteca estándar de Python.
 """
-import argparse, csv, io, json, os, re, shutil, statistics, subprocess, sys, time, unicodedata, urllib.request, zipfile
+import argparse, csv, io, json, os, re, shutil, statistics, subprocess, sys, time, unicodedata, urllib.parse, urllib.request, zipfile
 from datetime import date, datetime, timedelta
 
 CKAN = "https://datos.produccion.gob.ar/api/3/action/package_show?id=sepa-precios"
@@ -170,12 +170,16 @@ def ultimo_zip():
             log(f"Respuesta rara de la API ({e}): {crudo[:150]!r}")
     if not recursos:
         log("Pruebo con la página del dataset")
-        html = bajar("https://datos.produccion.gob.ar/dataset/sepa-precios").decode("utf-8", "replace")
+        crudo = bajar("https://datos.produccion.gob.ar/dataset/sepa-precios", intentos=2, obligatorio=False)
+        if not crudo:
+            return None
+        html = crudo.decode("utf-8", "replace")
         urls = sorted(set(re.findall(r'href="([^"]+\.zip)"', html)))
         recursos = [dict(nombre=os.path.basename(u), url=u if u.startswith("http") else "https://datos.produccion.gob.ar" + u, fecha="") for u in urls]
         log(f"Página del dataset: {len(recursos)} archivos zip")
     if not recursos:
-        fallar("No encontré el archivo de precios en el portal de datos abiertos (dataset sepa-precios).")
+        log("No encontré el archivo de precios en el portal de datos abiertos.")
+        return None
     for r in recursos[:10]:
         log(f"  · {r['nombre']} {r['fecha']}")
     hoy = DIAS_ES[date.today().weekday()]
@@ -353,10 +357,10 @@ def armar_salida(valores, sucursales, anterior):
         precios = {}
         for c in CADENAS:
             v = recortar(valores[p["id"]][c])
-            if len(v) >= 3:
+            if len(v) >= 2:
                 precios[c] = round(statistics.median(v), 2)
         todos = recortar([x for c in CADENAS for x in valores[p["id"]][c]])
-        if not precios or len(todos) < 5:
+        if not precios or len(todos) < 4:
             continue
         productos[p["id"]] = dict(nombre=p["nombre"], unidad=p["unidad"], claves=p["claves"], precios=precios, mediana=round(statistics.median(todos), 2))
 
@@ -403,10 +407,125 @@ def armar_salida(valores, sucursales, anterior):
     }
 
 
+# ---------------------------------------------------------------------------
+# Fuente alternativa: catálogos públicos de las tiendas online (los mismos que usan sus sitios).
+# Se usa solo si el portal SEPA no responde. Pocas consultas por día y con pausas.
+# ---------------------------------------------------------------------------
+VTEX = {"Jumbo": "https://www.jumbo.com.ar", "Vea": "https://www.vea.com.ar", "Día": "https://diaonline.supermercadosdia.com.ar"}
+COTO = "https://www.coto.com.ar/sitios/cdigi/categoria?Ntt={q}&Nrpp=60&format=json"
+BUSQUEDAS = {  # qué buscar en cada tienda para cada producto de referencia
+    "leche": "leche entera", "yerba": "yerba mate", "cafe": "cafe molido", "te": "te en saquitos", "azucar": "azucar",
+    "harina": "harina 0000", "arroz": "arroz largo fino", "fideos": "fideos spaghetti", "polenta": "polenta", "lentejas": "lentejas",
+    "aceite": "aceite girasol", "pure_tomate": "pure de tomate", "atun": "atun", "mayonesa": "mayonesa",
+    "galletitas_dulces": "galletitas dulces", "galletitas_agua": "galletitas de agua", "pan_lactal": "pan lactal",
+    "dulce_leche": "dulce de leche", "mermelada": "mermelada", "manteca": "manteca", "queso_cremoso": "queso cremoso",
+    "queso_rallado": "queso rallado", "queso_crema": "queso crema", "yogur": "yogur", "crema": "crema de leche",
+    "huevos": "huevos", "jamon": "jamon cocido", "salchichas": "salchichas", "carne_picada": "carne picada", "pollo": "pollo",
+    "milanesas": "milanesas", "papa": "papa", "cebolla": "cebolla", "tomate": "tomate", "banana": "banana", "manzana": "manzana",
+    "papel_higienico": "papel higienico", "detergente": "detergente", "lavandina": "lavandina", "jabon_polvo": "jabon en polvo",
+    "jabon_liquido_ropa": "jabon liquido ropa", "jabon_tocador": "jabon de tocador", "shampoo": "shampoo",
+    "pasta_dental": "pasta dental", "gaseosa_cola": "gaseosa cola", "agua": "agua mineral",
+}
+RE_PACK = re.compile(r"(\d+)\s*(?:rollos?|un|u|unidades)?\s*x\s*(\d+(?:[.,]\d+)?)\s*(kg|g|gr|grs|l|lt|ml|cc|m|mts|mt)\b")
+
+
+def precio_por_nombre(prod, nombre, precio):
+    """Precio por kg/L/u/m a partir del tamaño que figura en el nombre ("1 Kg", "500 Gr", "4 x 30 m")."""
+    conv = UNIDADES[prod["unidad"]]
+    n = normal(nombre).replace(",", ".")
+    m = RE_PACK.search(n)
+    if m and m.group(3) in conv:
+        return precio / (int(m.group(1)) * float(m.group(2)) * conv[m.group(3)])
+    for m in RE_TAM.finditer(n):
+        if m.group(2) in conv:
+            q = num(m.group(1)) * conv[m.group(2)]
+            if q > 0:
+                return precio / q
+    if prod["unidad"] == "kg" and re.search(r"\bx ?kg\b|por kg|\bkg$", n):
+        return precio
+    return precio if prod["unidad"] == "u" else 0
+
+
+def pedir_json(url):
+    req = urllib.request.Request(url, headers={**UA, "Accept": "application/json"})
+    with urllib.request.urlopen(req, timeout=40) as r:
+        return json.loads(r.read())
+
+
+def productos_vtex(base, q):
+    out = []
+    for desde in (0, 50):
+        try:
+            datos = pedir_json(f"{base}/api/catalog_system/pub/products/search?ft={urllib.parse.quote(q)}&_from={desde}&_to={desde + 49}")
+        except Exception as e:
+            log(f"    {base} «{q}»: {e}")
+            break
+        for p in datos or []:
+            try:
+                of = p["items"][0]["sellers"][0]["commertialOffer"]
+                if of.get("Price") and of.get("AvailableQuantity", 1) > 0:
+                    out.append((p.get("productName", ""), float(of["Price"])))
+            except (KeyError, IndexError, TypeError, ValueError):
+                continue
+        if len(datos or []) < 50:
+            break
+        time.sleep(0.4)
+    return out
+
+
+def productos_coto(q):
+    try:
+        datos = pedir_json(COTO.format(q=urllib.parse.quote(q)))
+    except Exception as e:
+        log(f"    Coto «{q}»: {e}")
+        return []
+    out = []
+
+    def recorrer(x):
+        if isinstance(x, dict):
+            at = x.get("attributes")
+            if isinstance(at, dict):
+                nom = at.get("product.displayName") or at.get("sku.displayName")
+                pre = at.get("sku.activePrice") or at.get("sku.referencePrice")
+                nom = nom[0] if isinstance(nom, list) and nom else nom
+                pre = pre[0] if isinstance(pre, list) and pre else pre
+                if nom and pre and num(pre) > 0:
+                    out.append((str(nom), num(pre)))
+            for v in x.values():
+                recorrer(v)
+        elif isinstance(x, list):
+            for v in x:
+                recorrer(v)
+    recorrer(datos)
+    return out
+
+
+def desde_tiendas():
+    log("Uso los catálogos públicos de las tiendas online")
+    compilados = [(p, re.compile(p["incluye"]), re.compile(p["excluye"]) if p["excluye"] else None) for p in PRODUCTOS]
+    valores = {p["id"]: {c: [] for c in CADENAS} for p in PRODUCTOS}
+    contados = {c: 0 for c in CADENAS}
+    for p, inc, exc in compilados:
+        q = BUSQUEDAS.get(p["id"], p["nombre"])
+        for cadena in CADENAS:
+            lista = productos_coto(q) if cadena == "Coto" else productos_vtex(VTEX[cadena], q) if cadena in VTEX else []
+            for nombre, precio in lista:
+                d = normal(nombre)
+                if inc.search(d) and not (exc and exc.search(d)):
+                    v = precio_por_nombre(p, nombre, precio)
+                    if v > 0:
+                        valores[p["id"]][cadena].append(v)
+                        contados[cadena] += 1
+            time.sleep(0.4)
+    log("Precios encontrados por cadena: " + ", ".join(f"{c} {n}" for c, n in contados.items()))
+    return valores, {c: 0 for c in CADENAS}
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--zip", help="usar un zip ya descargado")
     ap.add_argument("--salida", default="precios.json")
+    ap.add_argument("--fuente", choices=["auto", "sepa", "tiendas"], default="auto", help="auto: SEPA y, si no responde, las tiendas")
     a = ap.parse_args()
     anterior = None
     if os.path.exists(a.salida):
@@ -414,20 +533,34 @@ def main():
             anterior = json.load(open(a.salida, encoding="utf-8"))
         except Exception:
             anterior = None
-    zp = a.zip
-    if not zp:
+    zp, fuente = a.zip, "sepa"
+    if not zp and a.fuente in ("auto", "sepa"):
         url = ultimo_zip()
-        zp = "/tmp/sepa.zip"
-        log(f"Bajando {url}")
-        bajar(url, zp)
-        log(f"Bajado: {os.path.getsize(zp) / 1e6:.0f} MB")
-        if not zipfile.is_zipfile(zp):
-            inicio = open(zp, "rb").read(300).decode("utf-8", "replace").replace("\n", " ")
-            fallar(f"Lo que bajó del portal no es un zip (puede estar en mantenimiento). Empieza así: {inicio[:160]}")
-    valores, sucursales = procesar(zp)
+        if url:
+            log(f"Bajando {url}")
+            zp = bajar(url, "/tmp/sepa.zip", obligatorio=False)
+            if zp and not zipfile.is_zipfile(zp):
+                inicio = open(zp, "rb").read(300).decode("utf-8", "replace").replace("\n", " ")
+                log(f"Lo que bajó del portal no es un zip: {inicio[:160]}")
+                zp = None
+            if zp:
+                log(f"Bajado: {os.path.getsize(zp) / 1e6:.0f} MB")
+    if zp:
+        valores, sucursales = procesar(zp)
+    elif a.fuente == "sepa":
+        fallar("El portal de datos abiertos (SEPA) no respondió.")
+    else:
+        log("El portal SEPA no está disponible desde acá: paso a las tiendas online.")
+        valores, sucursales = desde_tiendas()
+        fuente = "tiendas"
     salida = armar_salida(valores, sucursales, anterior)
+    if fuente == "tiendas":
+        salida["fuente"] = "Precios publicados en las tiendas online de Coto, Jumbo, Vea y Día"
+        salida["fuente_corta"] = "tiendas online de cada cadena"
+    else:
+        salida["fuente_corta"] = "Precios Claros (SEPA), datos abiertos de la Secretaría de Comercio"
     if len(salida["productos"]) < 10:
-        fallar(f"Solo encontré {len(salida['productos'])} productos de referencia: el formato de los archivos puede haber cambiado. Mirá en el registro las líneas 'Columnas detectadas' y 'Sucursales por cadena'. No guardé nada.")
+        fallar(f"Solo encontré {len(salida['productos'])} productos de referencia ({fuente}). Puede que haya cambiado el formato de los datos: mirá el registro. No guardé nada.")
     with open(a.salida, "w", encoding="utf-8") as f:
         json.dump(salida, f, ensure_ascii=False, separators=(",", ":"))
     log(f"Listo: {len(salida['productos'])} productos guardados en {a.salida} ({os.path.getsize(a.salida) / 1e3:.0f} KB)")
