@@ -580,6 +580,10 @@ dialog::backdrop{background:rgba(0,0,0,.45)}
     </section>
 
     <section id="v-mas" hidden>
+      <div class="panel" id="adminBox" hidden style="margin-top:6px">
+        <p><b>Sos administrador.</b> Mirá cuántos usuarios hay, de qué barrios y cuánto usan la app.</p>
+        <a class="btn" href="admin.html" target="_blank" rel="noopener">Abrir panel de administración</a>
+      </div>
       <h2 style="margin-top:6px">Tus logros</h2>
       <div class="panel" id="logros"></div>
       <div class="reco">
@@ -621,21 +625,10 @@ dialog::backdrop{background:rgba(0,0,0,.45)}
         <p>Si alguien te pasó un link o código de su casa, pegalo acá. Vas a pasar a ver esa despensa.</p>
         <form class="inline" id="frmCodigoMas"><input id="codigoMas" placeholder="Link o código" autocomplete="off"><button class="btn ghost sm" type="submit">Unirme</button></form>
       </div>
-      <h2>Copia de seguridad</h2>
-      <div class="panel">
-        <p>Todo se guarda en Firebase y funciona sin conexión. Además podés bajar una copia completa (productos, compras e historial) y restaurarla cuando quieras.</p>
-        <button class="btn" id="btnExport">Descargar copia (.json)</button>
-        <label class="btn ghost" for="fileImport">Restaurar desde archivo</label>
-        <input type="file" id="fileImport" accept="application/json,.json" hidden>
-      </div>
       <h2>Empezar rápido</h2>
       <div class="panel">
         <p>Carga una despensa típica (detergente, jabón, papel higiénico, carne, pollo…) para que después ajustes las cantidades reales.</p>
         <button class="btn ghost" id="btnSeed">Cargar productos de ejemplo</button>
-      </div>
-      <div class="panel" id="adminBox" hidden>
-        <p><b>Sos administrador.</b> Mirá cuántos usuarios hay, de qué barrios y cuánto usan la app.</p>
-        <a class="btn" href="admin.html" target="_blank" rel="noopener">Abrir panel de administración</a>
       </div>
       <h2>Tus datos</h2>
       <div class="panel">
@@ -644,7 +637,6 @@ dialog::backdrop{background:rgba(0,0,0,.45)}
           <button class="btn ghost" id="btnEditarPerfil">Editar mis datos</button>
           <button class="btn ghost" id="btnLogout">Cerrar sesión</button>
         </div>
-        <button class="linkbtn" type="button" data-privacidad style="justify-self:start">Cómo usamos tus datos</button>
       </div>
       <h2>Otras opciones</h2>
       <div class="panel">
@@ -1245,9 +1237,11 @@ function registrarVisita() {
   const plataforma = /android/i.test(navigator.userAgent) ? "android" : esIOS() ? "ios" : "compu";
   setDoc(perfilRef(), { visto: serverTimestamp(), plataforma, instalada: yaInstalada() }, { merge: true }).catch(() => {});
 }
+const ADMINS = ["uriel.bacher@gmail.com"];   // emails que ven el botón del panel
 function revisarAdmin() {
   if (!user) return;
-  getDoc(doc(db, "admin", "acceso")).then(() => { $("#adminBox").hidden = false; }).catch(() => { $("#adminBox").hidden = true; });
+  // El botón se muestra por email; los datos igual están protegidos por las reglas de Firebase
+  $("#adminBox").hidden = !ADMINS.includes((user.email || "").toLowerCase());
 }
 
 /* ---------- mis datos (Más) ---------- */
@@ -2460,34 +2454,6 @@ $("#rapMenos").onclick = () => { mover(rapidoId, -1); setTimeout(pintarRapido, 1
 $("#rapMas").onclick = () => { mover(rapidoId, 1); setTimeout(pintarRapido, 150); };
 $("#rapEditar").onclick = () => { $("#dlgRapido").close(); abrir(rapidoId); };
 $("#rapCerrar").onclick = () => $("#dlgRapido").close();
-
-/* ---------- backup ---------- */
-const plano = arr => arr.map(o => Object.fromEntries(Object.entries(o).map(([k, v]) => [k, v?.toMillis ? { _ts: v.toMillis() } : v])));
-const revivir = o => Object.fromEntries(Object.entries(o).map(([k, v]) => [k, v && typeof v === "object" && "_ts" in v ? Timestamp.fromMillis(v._ts) : v]));
-$("#btnExport").onclick = () => {
-  const data = { app: "despensa-casa", version: 2, exportado: new Date().toISOString(), config, items: plano(items), compras: plano(compras), movimientos: plano(movs) };
-  const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
-  const a = document.createElement("a");
-  a.href = URL.createObjectURL(blob);
-  a.download = `despensa-${new Date().toISOString().slice(0, 10)}.json`;
-  a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 2000);
-};
-$("#fileImport").onchange = async e => {
-  const f = e.target.files[0]; if (!f) return;
-  try {
-    const json = JSON.parse(await f.text());
-    const grupos = [[itemsCol, Array.isArray(json) ? json : json.items || []], [comprasCol, json.compras || []], [movsCol, json.movimientos || []]];
-    let n = 0, b = writeBatch(db), enLote = 0;
-    for (const [col, arr] of grupos) for (const { id, ...r } of arr) {
-      b.set(id ? doc(col(), id) : doc(col()), revivir(r), { merge: true }); n++;
-      if (++enLote === 400) { await b.commit(); b = writeBatch(db); enLote = 0; }
-    }
-    if (json.config) { const { creador, invitacion, nombre, ...resto } = json.config; b.set(casaDoc(), resto, { merge: true }); }
-    await b.commit();
-    toast(`Restaurados ${n} registros`);
-  } catch (err) { toast("Archivo inválido: " + err.message); }
-  e.target.value = "";
-};
 
 /* ---------- ejemplos ---------- */
 const EJEMPLOS = [
