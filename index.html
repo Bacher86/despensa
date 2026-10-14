@@ -490,6 +490,19 @@ nav.tabs{border-top:0;box-shadow:0 -1px 0 var(--line);background:color-mix(in sr
 dialog{border-radius:26px 26px 0 0}
 @media (min-width:700px){dialog{border-radius:26px}}
 .splash span{font-family:var(--f-display);font-size:1.05rem}
+.menu-top{flex-wrap:wrap;gap:4px 12px}
+header.top h1{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.top-acc{flex:none}
+@media (max-width:460px){
+  .top-acc{gap:6px}
+  .top-acc:has(#btnFoto:not([hidden])) .scan-btn.ticket .lbl{display:none}
+  .top-acc:has(#btnFoto:not([hidden])) .scan-btn.ticket{padding:8px 9px}
+  .top-acc:has(#btnFoto:not([hidden])) #btnFoto .lbl{display:none}
+  .top-acc:has(#btnFoto:not([hidden])) #btnFoto{padding:8px 10px}
+  .top-acc:has(#btnFoto:not([hidden])) ~ h1, header.top:has(#btnFoto:not([hidden])) h1{font-size:1.4rem}
+}
+.menu-acc{gap:14px}
+.menu-acc .linkbtn{white-space:nowrap;padding:4px 0}
 </style>
 </head>
 <body>
@@ -586,11 +599,11 @@ dialog{border-radius:26px 26px 0 0}
         </button>
         <button class="scan-btn ticket" data-ticket aria-label="Cargar el ticket del súper con una foto">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2h12v20l-3-2-3 2-3-2-3 2z"/><path d="M9 7h6M9 11h6M9 15h4"/></svg>
-          Ticket
+          <span class="lbl">Ticket</span>
         </button>
         <button class="scan-btn primary" id="btnFoto" aria-label="Sacar foto para cargar productos">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h3l2-3h6l2 3h3a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1z"/><circle cx="12" cy="13" r="3.5"/></svg>
-          Foto
+          <span class="lbl">Foto</span>
         </button>
       </div>
       <input type="file" id="fotoInput" accept="image/*" capture="environment" hidden>
@@ -2147,8 +2160,10 @@ $("#btnALista").onclick = async () => {
 
 /* ---------- foto con IA: reconoce productos y los cuenta ----------
    Usa Gemini a través de Firebase AI Logic (se activa en la consola de Firebase).
-   RECAPTCHA_KEY: la clave de App Check (reCAPTCHA Enterprise). Firebase la exige para usar la IA.  */
+   RECAPTCHA_KEY: la clave de App Check. Firebase la exige para usar la IA (ver README, parte 5).
+   RECAPTCHA_TIPO: "v3" (reCAPTCHA v3, gratis y sin tarjeta) o "enterprise".  */
 const RECAPTCHA_KEY = "";
+const RECAPTCHA_TIPO = "v3";
 const IA_ACTIVADA = !!RECAPTCHA_KEY;   // la foto y las ideas con IA aparecen solo si se activó la IA (ver README)
 const MODELOS_IA = ["gemini-3.8-flash", "gemini-2.5-flash"];
 const FB = "https://www.gstatic.com/firebasejs/13.0.0/";
@@ -2158,7 +2173,8 @@ function prepararIA() {
   if (!iaListo) iaListo = (async () => {
     if (RECAPTCHA_KEY) {
       const ac = await import(FB + "firebase-app-check.js");
-      ac.initializeAppCheck(app, { provider: new ac.ReCaptchaEnterpriseProvider(RECAPTCHA_KEY), isTokenAutoRefreshEnabled: true });
+      const Prov = RECAPTCHA_TIPO === "enterprise" ? ac.ReCaptchaEnterpriseProvider : ac.ReCaptchaV3Provider;
+      ac.initializeAppCheck(app, { provider: new Prov(RECAPTCHA_KEY), isTokenAutoRefreshEnabled: true });
     }
     const m = await import(FB + "firebase-ai.js");
     const ai = m.getAI(app, { backend: new m.GoogleAIBackend() });
@@ -2210,11 +2226,11 @@ function leerJSON(txt) {
 
 function mensajeErrorIA(e) {
   const t = String(e?.message || e);
-  if (/app.?check|attestation|recaptcha/i.test(t)) return "Falta configurar App Check para la IA (Más → ver guía, paso de la foto).";
+  if (/app.?check|attestation|recaptcha/i.test(t)) return "Falta configurar App Check para la IA (guía, parte 5, pasos 13 a 15).";
   if (/not.?enabled|has not been used|SERVICE_DISABLED|api-not-enabled|firebasevertexai|AI Logic/i.test(t)) return "La IA todavía no está activada en Firebase (AI Logic → Comenzar).";
   if (/billing|blaze|quota|RESOURCE_EXHAUSTED|429/i.test(t)) return "Se llegó al límite de uso de la IA por ahora. Probá en un rato.";
-  if (/network|fetch|Failed to fetch|offline/i.test(t)) return "Sin conexión. La foto necesita internet.";
-  return "No se pudo analizar la foto: " + t.slice(0, 140);
+  if (/network|fetch|Failed to fetch|offline/i.test(t)) return "Sin conexión. La IA necesita internet.";
+  return "La IA no pudo responder: " + t.slice(0, 140);
 }
 
 let fotoModo = "sumar", fotoRes = [];
@@ -2966,26 +2982,68 @@ document.addEventListener("click", e => {
    Elige las comidas que más aprovechan lo que hay (y lo que vence), sin repetir el ingrediente
    principal dos días seguidos, y descuenta en una despensa "virtual" lo que va usando cada día.  */
 const DIAS_CORTOS = ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"];
+// ---- menú semanal: platos principales variados, no acompañamientos ni picadas ----
+// guarniciones, entradas y snacks no cuentan como "la comida del día"
+const NO_MENU = new Set(["quesadillas", "griega", "tartarsalmon", "rabas", "mejillones", "sopatomate", "cremabrocoli", "cremahongos", "budabowl", "papasrusticas", "papasfritas", "batatasfritas", "purecalabaza", "guacamole", "hummus", "babaganoush", "faina", "caprese", "provoleta", "gazpacho", "tostadapalta", "huevosbenedictinos", "carpaccio", "fideosmanteca", "huevostost", "papahuevo", "ensaladagarbanzos", "langostinosajillo", "mollejas", "panchos", "tostado", "rusa", "vitel", "pancasero", "shakshuka"]);
+// la "base" del plato, para no comer papa, arroz o fideos tres veces en la semana
+function baseDe(r) {
+  const ks = r.ing.filter(i => !i.opc).flatMap(i => i.claves).join(" ");
+  if (r.prot === "pasta" || /\b(fideo|ravioles|noquis|lasagna|panqueque)/.test(ks)) return "pasta";
+  if (/\barroz\b/.test(ks)) return "arroz";
+  if (/\bpapa\b/.test(ks)) return "papa";
+  if (/tapa de|prepizza|masa de pizza|tortilla de trigo/.test(ks)) return "masa";
+  if (/lenteja|poroto|garbanzo/.test(ks)) return "legumbre";
+  return "otro";
+}
+const familiaDe = r => normal(r.n).split(" ")[0].replace(/s$/, "");
+const paraMenu = r => r.tipo === "salado" && !NO_MENU.has(r.id) && (r.mom || []).some(m => m === "cena" || m === "almuerzo");
+function puntajeMenu(e, ctx, dia) {
+  const r = e.rec, finde = [0, 6].includes(new Date(Date.now() + dia * DIA).getDay());
+  let s = e.score + Math.random() * 5;                                  // un poco de azar: cada menú sale distinto
+  const principales = r.ing.filter(i => !i.opc).length;
+  if (principales <= 2) s -= 4;                                          // demasiado simple para ser "la comida"
+  if (principales >= 4) s += 2;
+  if (e.faltan.length === 1) s += 2;                                     // que falte una cosa está bien (se agrega a la lista)
+  if (e.faltan.length > 2) s -= 10;
+  if (ctx.prev && ctx.prev.prot === r.prot) s -= 7;
+  s -= (ctx.prot.get(r.prot) || 0) * 4;
+  const base = baseDe(r);
+  if (base !== "otro") { s -= (ctx.base.get(base) || 0) * 5; if (ctx.prev && baseDe(ctx.prev) === base) s -= 6; }
+  const gourmet = (r.tags || []).includes("gourmet");
+  if (finde) { if (gourmet) s += 7; if (r.t >= 60) s += 2; }           // el finde, algo para lucirse
+  else { if (r.t > 50) s -= 4; if (gourmet && r.t > 40) s -= 2; }     // entre semana, algo práctico
+  if (gourmet && ctx.gourmet >= 2) s -= 6;
+  if (ctx.familia.has(familiaDe(r))) s -= 6;                            // no dos "croquetas" o dos "tartas" en la semana
+  return s;
+}
+function contextoMenu(ids) {
+  const ctx = { prot: new Map(), base: new Map(), familia: new Set(), gourmet: 0, prev: null };
+  for (const id of ids) {
+    const r = RECETAS.find(x => x.id === id); if (!r) continue;
+    ctx.prot.set(r.prot, (ctx.prot.get(r.prot) || 0) + 1);
+    const b = baseDe(r); ctx.base.set(b, (ctx.base.get(b) || 0) + 1);
+    if ((r.tags || []).includes("gourmet")) ctx.gourmet++;
+    ctx.familia.add(familiaDe(r));
+    ctx.prev = r;
+  }
+  return ctx;
+}
 function armarMenu(cuantos = 7, fijos = []) {
   const hist = historialRecetas();
   const stock = new Map(items.map(i => [i.id, num(i.cantidad)]));
-  const elegidas = [], usadasProt = new Map();
-  const candidatas = RECETAS.filter(r => r.tipo === "salado" && (r.mom || []).some(m => m === "cena" || m === "almuerzo"));
+  const elegidas = [];
+  const candidatas = RECETAS.filter(paraMenu);
   for (let d = 0; d < cuantos; d++) {
-    if (fijos[d]) { elegidas.push(fijos[d]); const rr = RECETAS.find(x => x.id === fijos[d]); if (rr) { usadasProt.set(rr.prot, (usadasProt.get(rr.prot) || 0) + 1); consumirVirtual(evaluar(rr, stock, hist), stock); } continue; }
+    if (fijos[d]) { elegidas.push(fijos[d]); const rr = RECETAS.find(x => x.id === fijos[d]); if (rr) consumirVirtual(evaluar(rr, stock, hist), stock); continue; }
+    const ctx = contextoMenu(elegidas);
     let mejor = null, mejorScore = -Infinity;
     for (const r of candidatas) {
       if (elegidas.includes(r.id)) continue;
-      const e = evaluar(r, stock, hist);
-      let s = e.score;
-      const prev = elegidas.length ? RECETAS.find(x => x.id === elegidas[elegidas.length - 1]) : null;
-      if (prev && prev.prot === r.prot) s -= 7;
-      s -= (usadasProt.get(r.prot) || 0) * 3;
+      const e = evaluar(r, stock, hist), s = puntajeMenu(e, ctx, d);
       if (s > mejorScore) { mejorScore = s; mejor = e; }
     }
     if (!mejor) break;
     elegidas.push(mejor.rec.id);
-    usadasProt.set(mejor.rec.prot, (usadasProt.get(mejor.rec.prot) || 0) + 1);
     consumirVirtual(mejor, stock);
   }
   return elegidas;
@@ -3008,13 +3066,13 @@ function faltantesMenu(ids) {
 const menuActual = () => { const m = config.menu; return m && Array.isArray(m.dias) && Date.now() - ms(m.creado) < 8 * DIA ? m : null; };
 function renderMenu(hist) {
   const m = menuActual();
-  if (!m) return `<div class="menu-cta"><div><b>Menú de la semana</b><span>Armamos las comidas de la semana con lo que tenés, sin repetir, y te decimos qué falta comprar.</span></div><button class="btn sm" data-armarmenu>Armar menú</button></div>`;
+  if (!m) return `<div class="menu-cta"><div><b>Menú de la semana</b><span>Armamos las comidas de la semana con lo que tenés, sin repetir, y te decimos qué falta comprar.</span></div><span class="menu-acc" style="flex-direction:column;gap:8px">${IA_ACTIVADA ? `<button class="btn sm" data-menuia>Armar recetas</button>` : ""}<button class="btn sm ${IA_ACTIVADA ? "ghost" : ""}" data-armarmenu>Armar menú</button></span></div>`;
   const inicio = new Date(ms(m.creado)); inicio.setHours(0, 0, 0, 0);
   const hoyIdx = Math.floor((hoy0() - inicio) / DIA);
   const faltTodo = faltantesMenu(m.dias.slice(Math.max(0, hoyIdx)));
   const falt = faltTodo.filter(f => !(f.cualquiera && enLista(f.cualquiera)));
   return `<div class="menu">
-    <div class="menu-top"><b>Menú de la semana</b><span class="menu-acc"><button class="linkbtn" data-compartirmenu>Compartir</button><button class="linkbtn" data-borrarmenu>Borrar</button></span></div>
+    <div class="menu-top"><b>Menú de la semana</b><span class="menu-acc">${IA_ACTIVADA ? `` : ""}<button class="linkbtn" data-armarmenu>Otro menú</button><button class="linkbtn" data-compartirmenu>Compartir</button><button class="linkbtn" data-borrarmenu>Borrar</button></span></div>
     <div class="menu-dias">${m.dias.map((id, k) => {
       const r = [...RECETAS].find(x => x.id === id); if (!r) return "";
       const d = new Date(inicio); d.setDate(d.getDate() + k);
@@ -3031,12 +3089,13 @@ function renderMenu(hist) {
 }
 function guardarMenu(dias) { setDoc(casaDoc(), { menu: { creado: config.menu?.creado && menuActual() ? config.menu.creado : Timestamp.now(), dias, por: primerNombre() } }, { merge: true }).catch(er => toast("No se pudo guardar: " + er.message)); }
 document.addEventListener("click", e => {
-  const t = e.target.closest("[data-armarmenu],[data-borrarmenu],[data-cambiarmenu],[data-faltamenu]"); if (!t) return;
+  const t = e.target.closest("[data-armarmenu],[data-borrarmenu],[data-cambiarmenu],[data-faltamenu],[data-menuia]"); if (!t) return;
+  if ("menuia" in t.dataset) { menuIA(t); return; }
   if ("armarmenu" in t.dataset) {
     const dias = armarMenu(7);
     if (!dias.length) { toast("Cargá algunos productos en la despensa para armar el menú"); return; }
     setDoc(casaDoc(), { menu: { creado: Timestamp.now(), dias, por: primerNombre() } }, { merge: true });
-    toast("✓ Menú armado. Lo ve toda la casa.");
+    toast(menuActual() ? "✓ Menú nuevo armado" : "✓ Menú armado. Lo ve toda la casa.");
   }
   if ("borrarmenu" in t.dataset) setDoc(casaDoc(), { menu: deleteField() }, { merge: true });
   if (t.dataset.cambiarmenu) {
@@ -3048,9 +3107,10 @@ document.addEventListener("click", e => {
     const hist = historialRecetas();
     const stock = new Map(items.map(i => [i.id, num(i.cantidad)]));
     for (let i = 0; i < k; i++) { const r = RECETAS.find(x => x.id === m.dias[i]); if (r) consumirVirtual(evaluar(r, stock, hist), stock); }
-    const prev = k > 0 ? RECETAS.find(x => x.id === m.dias[k - 1]) : null;
-    const alt = RECETAS.filter(r => r.tipo === "salado" && !evitar.has(r.id) && (r.mom || []).some(x => x === "cena" || x === "almuerzo"))
-      .map(r => { const ev = evaluar(r, stock, hist); return [r.id, ev.score - (prev && prev.prot === r.prot ? 7 : 0)]; })
+    const ctx = contextoMenu(m.dias.filter((id, i) => i !== k));
+    ctx.prev = k > 0 ? RECETAS.find(x => x.id === m.dias[k - 1]) : null;
+    const alt = RECETAS.filter(r => paraMenu(r) && !evitar.has(r.id))
+      .map(r => [r.id, puntajeMenu(evaluar(r, stock, hist), ctx, k)])
       .sort((a, b) => b[1] - a[1])[Math.floor(Math.random() * 3)];
     if (!alt) return;
     const dias = [...m.dias]; dias[k] = alt[0];
@@ -3151,6 +3211,56 @@ $("#dlgReceta").addEventListener("click", e => {
   }
 });
 
+// pregunta a Gemini (prueba el modelo nuevo y si no existe, el anterior) y devuelve el JSON de la respuesta
+async function pedirIA(prompt, temperatura = 0.7) {
+  const modelos = await prepararIA();
+  let resp, ultimo;
+  for (const m of modelos) {
+    try { resp = await conTiempo(m.generateContent({ contents: [{ role: "user", parts: [{ text: prompt }] }], generationConfig: { responseMimeType: "application/json", temperature: temperatura } }), 60000); break; }
+    catch (er) { ultimo = er; if (!/not.?found|404|not supported|unknown model/i.test(String(er?.message))) break; }
+  }
+  if (!resp) throw ultimo;
+  return leerJSON(resp.response.text());
+}
+const textoDespensa = () => items.filter(i => num(i.cantidad) > 0).map(i => `- ${i.nombre}: ${fmt(i.cantidad)} ${i.unidad}${diasVence(i) != null && diasVence(i) <= 5 ? ` (${textoVence(diasVence(i))})` : ""}`).join("\n");
+
+// menú de la semana armado por Gemini, eligiendo entre las recetas de la app (así cada día abre su receta completa)
+async function menuIA(boton) {
+  if (!items.some(i => num(i.cantidad) > 0)) { toast("Primero cargá lo que tenés en la despensa"); return; }
+  const txt = boton?.textContent; if (boton) { boton.disabled = true; boton.textContent = "Armando…"; }
+  try {
+    const hist = historialRecetas();
+    const cands = RECETAS.filter(paraMenu).map(r => { const e = evaluar(r, null, hist); return { r, e }; })
+      .sort((a, b) => a.e.faltan.length - b.e.faltan.length).slice(0, 140);
+    const lista = cands.map(({ r, e }) => `${r.id} | ${r.n} | ${r.t} min${(r.tags || []).includes("gourmet") ? " | para lucirse" : ""}${e.faltan.length ? ` | falta: ${e.faltan.map(f => f.ing.nombre.toLowerCase()).join(", ")}` : " | tienen todo"}${e.fav ? " | favorita" : ""}`).join("\n");
+    const dias = Array.from({ length: 7 }, (_, d) => { const f = new Date(Date.now() + d * DIA); return d === 0 ? "hoy" : f.toLocaleDateString("es-AR", { weekday: "long" }); });
+    const hechas = [...hist.entries()].filter(([, h]) => (Date.now() - h.ult) / DIA < 7).map(([n]) => n);
+    const prompt = `Sos un cocinero argentino que arma el menú semanal de una familia. Tenés que elegir una comida principal para cada uno de estos días: ${dias.join(", ")}.
+Lo que hay en la casa:
+${textoDespensa()}
+${hechas.length ? `Ya cocinaron esta semana (no repitas): ${hechas.join(", ")}\n` : ""}
+Recetas disponibles (id | nombre | tiempo | notas):
+${lista}
+
+Reglas:
+- Elegí SOLO ids de la lista, sin repetir.
+- Variedad real: alterná carne, pollo, pescado, pasta, verduras y legumbres; no repitas la base (papa, arroz, fideos, masa) dos días seguidos ni más de dos veces en la semana.
+- Usá primero lo que vence pronto y preferí recetas donde "tienen todo" o falta una sola cosa.
+- De lunes a jueves, platos de 45 minutos o menos. Sábado y domingo, algo especial ("para lucirse").
+- Que sea un menú rico y apetecible, no lo más básico.
+Respondé solo con este JSON: {"dias":[{"id":"...","por_que":"frase corta"}]}`;
+    const j = await pedirIA(prompt, 0.8);
+    const ids = new Set(RECETAS.map(r => r.id)), elegidas = [];
+    for (const d of j?.dias || []) if (ids.has(d?.id) && !elegidas.includes(d.id)) elegidas.push(d.id);
+    if (elegidas.length < 4) throw new Error("La IA no devolvió un menú válido. Probá de nuevo.");
+    // si devolvió menos de 7, completamos con el armado de la app
+    const completo = elegidas.length >= 7 ? elegidas.slice(0, 7) : armarMenu(7, elegidas);
+    setDoc(casaDoc(), { menu: { creado: Timestamp.now(), dias: completo, por: primerNombre(), ia: true } }, { merge: true });
+    toast("✓ Menú armado");
+  } catch (er) { toast(mensajeErrorIA(er)); }
+  if (boton) { boton.disabled = false; boton.textContent = txt; }
+}
+
 async function ideasIA() {
   const est = $("#iaEstado");
   const hay = items.filter(i => num(i.cantidad) > 0);
@@ -3161,16 +3271,11 @@ async function ideasIA() {
     const modelos = await prepararIA();
     const despensa = hay.map(i => `- ${i.nombre}: ${fmt(i.cantidad)} ${i.unidad}${diasVence(i) != null && diasVence(i) <= 5 ? ` (${textoVence(diasVence(i))})` : ""}`).join("\n");
     const prompt = `Sos un cocinero casero argentino. Esto es lo que hay en una casa:\n${despensa}\n
-Proponé 3 recetas caseras, simples y ricas, que se puedan hacer principalmente con eso. Priorizá lo que vence pronto. Podés asumir sal, pimienta, aceite, agua y condimentos básicos. Evitá repetir: tortilla de papas, milanesas con puré y fideos con tuco.
+Proponé 3 recetas ricas y distintas entre sí que se puedan hacer principalmente con eso: una rápida para la semana, una más elaborada para lucirse y una que aproveche lo que vence pronto. Pueden faltar como mucho 1 o 2 ingredientes fáciles de conseguir (aclaralo). Podés asumir sal, pimienta, aceite, agua y condimentos básicos. Pasos claros, con tiempos y temperaturas. Nada de lo más obvio (tortilla de papas, milanesas con puré, fideos con tuco).
 Respondé solo con este JSON:
 {"recetas":[{"nombre":"...","minutos":30,"porciones":4,"dulce":false,"ingredientes":[{"nombre":"Huevos","cantidad":"3"}],"pasos":["...","..."]}]}`;
-    let resp, ultimo;
-    for (const m of modelos) {
-      try { resp = await conTiempo(m.generateContent(prompt), 45000); break; }
-      catch (er) { ultimo = er; if (!/not.?found|404|not supported|unknown model/i.test(String(er?.message))) break; }
-    }
-    if (!resp) throw ultimo;
-    const j = leerJSON(resp.response.text());
+    void modelos;
+    const j = await pedirIA(prompt, 0.9);
     const recs = (j?.recetas || []).filter(r => r?.nombre && r.ingredientes?.length && r.pasos?.length).slice(0, 3);
     if (!recs.length) throw new Error("No llegaron recetas. Probá de nuevo.");
     RECETAS_IA = recs.map((r, k) => ({
