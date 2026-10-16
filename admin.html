@@ -132,10 +132,19 @@ $("#btnRecargar").onclick = () => cargar();
 onAuthStateChanged(auth, async u => {
   $("#gate").hidden = !!u; $("#panel").hidden = !u;
   if (!u) return;
+  // token nuevo: si el mail se verificó hace poco, el token viejo todavía dice "no verificado"
+  let claims = {};
+  try { claims = (await u.getIdTokenResult(true)).claims; } catch {}
   try { await getDoc(doc(db, "admin", "acceso")); }
-  catch {
+  catch (e) {
     $("#panel").hidden = true; $("#gate").hidden = false;
-    $("#gateErr").textContent = `La cuenta ${u.email} no es administradora. Agregala en las reglas de Firebase (función esAdmin).`;
+    const code = e?.code || "", provs = u.providerData.map(p => p.providerId).join(", ") || "—";
+    const motivo = code === "permission-denied"
+      ? `Firebase rechazó la cuenta ${u.email}: las reglas publicadas no la reconocen como administradora (o todavía no se publicaron).`
+      : code === "unavailable" || /offline/i.test(e?.message || "")
+        ? "No hay conexión con Firebase. Revisá internet y probá de nuevo."
+        : `Error: ${code || e?.message}`;
+    $("#gateErr").innerHTML = `${motivo}<br><br><small>Datos para revisar: mail <b>${u.email}</b> · verificado <b>${u.emailVerified ? "sí" : "no"}</b> (token: ${claims.email_verified ? "sí" : "no"}) · entra con <b>${provs}</b> · proyecto <b>${app.options.projectId}</b> · código <b>${code || "—"}</b></small>`;
     $("#gateErr").hidden = false;
     return;
   }
