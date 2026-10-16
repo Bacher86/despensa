@@ -102,7 +102,7 @@ input.buscar{width:100%;max-width:280px;padding:8px 12px;border-radius:10px;bord
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/13.0.0/firebase-app.js";
 import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/13.0.0/firebase-auth.js";
-import { getFirestore, collection, collectionGroup, doc, getDoc, getDocs, query, orderBy, limit, getCountFromServer, getAggregateFromServer, count, sum } from "https://www.gstatic.com/firebasejs/13.0.0/firebase-firestore.js";
+import { initializeFirestore, collection, collectionGroup, doc, getDoc, getDocs, query, orderBy, limit, getCountFromServer, getAggregateFromServer, count, sum } from "https://www.gstatic.com/firebasejs/13.0.0/firebase-firestore.js";
 
 const app = initializeApp({
   apiKey: "AIzaSyDg0svGUiA37wOkrs31ROHMfx-OieBG6Xo",
@@ -112,7 +112,10 @@ const app = initializeApp({
   messagingSenderId: "839069249046",
   appId: "1:839069249046:web:a76ce8e1b2c6e15b920f37"
 });
-const auth = getAuth(app), db = getFirestore(app);
+// Conexión por "long polling": funciona aunque la red o el navegador bloqueen la conexión normal de Firebase
+const auth = getAuth(app), db = initializeFirestore(app, { experimentalForceLongPolling: true });
+// ninguna consulta puede quedar cargando para siempre
+const conTiempo = (p, ms = 25000) => Promise.race([p, new Promise((_, mal) => setTimeout(() => mal(Object.assign(new Error("Firebase tardó demasiado en responder"), { code: "unavailable" })), ms))]);
 const $ = s => document.querySelector(s);
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const ms = t => t?.toMillis ? t.toMillis() : typeof t === "number" ? t : 0;
@@ -135,8 +138,12 @@ onAuthStateChanged(auth, async u => {
   // token nuevo: si el mail se verificó hace poco, el token viejo todavía dice "no verificado"
   let claims = {};
   try { claims = (await u.getIdTokenResult(true)).claims; } catch {}
-  try { await getDoc(doc(db, "admin", "acceso")); }
-  catch (e) {
+  let e = null;
+  for (let i = 0; i < 3; i++) {             // reintenta: la primera conexión a veces tarda
+    try { await conTiempo(getDoc(doc(db, "admin", "acceso")), 15000); e = null; break; }
+    catch (err) { e = err; if (err?.code === "permission-denied") break; await new Promise(r => setTimeout(r, 1500)); }
+  }
+  if (e) {
     $("#panel").hidden = true; $("#gate").hidden = false;
     const code = e?.code || "", provs = u.providerData.map(p => p.providerId).join(", ") || "—";
     const motivo = code === "permission-denied"
@@ -153,17 +160,25 @@ onAuthStateChanged(auth, async u => {
 
 let datos = null, ordenBarrios = { col: "usuarios", desc: true }, filtroBarrio = "";
 
-async function intentar(fn, def) { try { return await fn(); } catch (e) { console.warn(e); return def; } }
+async function intentar(fn, def) { try { return await conTiempo(fn()); } catch (e) { console.warn(e); return def; } }
 
 async function cargar() {
   $("#contenido").innerHTML = `<div class="cargando">Cargando estadísticas…</div>`;
-  const [us, casas, nItems, compras, top] = await Promise.all([
-    getDocs(collection(db, "usuarios")),
-    getDocs(collection(db, "hogar")),
+  let us, casas, nItems, compras, top;
+  try {
+  [us, casas, nItems, compras, top] = await Promise.all([
+    conTiempo(getDocs(collection(db, "usuarios")), 40000),
+    conTiempo(getDocs(collection(db, "hogar")), 40000),
     intentar(async () => (await getCountFromServer(collectionGroup(db, "items"))).data().count, null),
     intentar(async () => (await getAggregateFromServer(collectionGroup(db, "compras"), { n: count(), total: sum("total") })).data(), null),
     intentar(async () => (await getDocs(query(collection(db, "productos"), orderBy("usos", "desc"), limit(15)))).docs.map(d => d.data()), []),
   ]);
+  } catch (e) {
+    const msg = e?.code === "permission-denied" ? "Firebase no deja leer los usuarios: revisá que las reglas nuevas estén publicadas." : e?.code === "unavailable" ? "Firebase no respondió a tiempo." : "No se pudieron leer los datos: " + (e?.message || e);
+    $("#contenido").innerHTML = `<div class="cargando">${msg}<br><br><button class="btn" id="btnReintentar">Reintentar</button></div>`;
+    $("#btnReintentar").onclick = () => cargar();
+    return;
+  }
   datos = {
     usuarios: us.docs.map(d => ({ id: d.id, ...d.data() })),
     casas: casas.docs.map(d => ({ id: d.id, ...d.data() })),
