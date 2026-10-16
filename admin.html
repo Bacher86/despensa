@@ -117,7 +117,8 @@ const conTiempo = (p, ms = 25000) => Promise.race([p, new Promise((_, mal) => se
 const $ = s => document.querySelector(s);
 // ---- lectura directa de Firestore por su API web (pedidos comunes, sin conexión permanente) ----
 const PROYECTO = "casa-48f64";
-const BASE = `https://firestore.googleapis.com/v1/projects/${PROYECTO}/databases/(default)/documents`;
+const BASE_DATOS = "default";   // nombre de la base de Firestore de este proyecto
+const BASE = `https://firestore.googleapis.com/v1/projects/${PROYECTO}/databases/${BASE_DATOS}/documents`;
 async function rest(path, opts = {}) {
   const tok = await auth.currentUser.getIdToken();
   let r;
@@ -183,7 +184,7 @@ onAuthStateChanged(auth, async u => {
     $("#panel").hidden = true; $("#gate").hidden = false;
     const code = e?.code || "", provs = u.providerData.map(p => p.providerId).join(", ") || "—";
     const motivo = e?.http === 403 && /app ?check/i.test(e.message) ? "Firebase pide App Check para la base de datos. En Firebase → App Check → APIs → Cloud Firestore, tocá «Dejar de aplicar» (Unenforce)."
-      : e?.http === 404 ? "No se encontró la base de datos de Firestore en este proyecto. Revisá en Firebase → Firestore Database que exista la base «(default)»."
+      : e?.http === 404 ? "No se encontró la base de datos de Firestore en este proyecto. Revisá en Firebase → Firestore Database que exista la base «default»."
       : code === "PERMISSION_DENIED" || code === "permission-denied"
       ? `Firebase rechazó la cuenta ${u.email}: las reglas publicadas no la reconocen como administradora (o todavía no se publicaron).`
       : code === "unavailable" || /offline/i.test(e?.message || "")
