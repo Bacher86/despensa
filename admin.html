@@ -102,7 +102,6 @@ input.buscar{width:100%;max-width:280px;padding:8px 12px;border-radius:10px;bord
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/13.0.0/firebase-app.js";
 import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/13.0.0/firebase-auth.js";
-import { initializeFirestore, collection, collectionGroup, doc, getDoc, getDocs, query, orderBy, limit, getCountFromServer, getAggregateFromServer, count, sum } from "https://www.gstatic.com/firebasejs/13.0.0/firebase-firestore.js";
 
 const app = initializeApp({
   apiKey: "AIzaSyDg0svGUiA37wOkrs31ROHMfx-OieBG6Xo",
@@ -112,11 +111,48 @@ const app = initializeApp({
   messagingSenderId: "839069249046",
   appId: "1:839069249046:web:a76ce8e1b2c6e15b920f37"
 });
-// Conexión por "long polling": funciona aunque la red o el navegador bloqueen la conexión normal de Firebase
-const auth = getAuth(app), db = initializeFirestore(app, { experimentalForceLongPolling: true });
+const auth = getAuth(app);
 // ninguna consulta puede quedar cargando para siempre
 const conTiempo = (p, ms = 25000) => Promise.race([p, new Promise((_, mal) => setTimeout(() => mal(Object.assign(new Error("Firebase tardó demasiado en responder"), { code: "unavailable" })), ms))]);
 const $ = s => document.querySelector(s);
+// ---- lectura directa de Firestore por su API web (pedidos comunes, sin conexión permanente) ----
+const PROYECTO = "casa-48f64";
+const BASE = `https://firestore.googleapis.com/v1/projects/${PROYECTO}/databases/(default)/documents`;
+async function rest(path, opts = {}) {
+  const tok = await auth.currentUser.getIdToken();
+  let r;
+  try { r = await conTiempo(fetch(BASE + path, { ...opts, headers: { Authorization: `Bearer ${tok}`, "Content-Type": "application/json" } }), 30000); }
+  catch (e) { throw Object.assign(new Error(e?.message || "sin respuesta"), { code: "unavailable", http: 0 }); }
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) throw Object.assign(new Error((Array.isArray(j) ? j[0] : j)?.error?.message || r.statusText), { code: (Array.isArray(j) ? j[0] : j)?.error?.status || String(r.status), http: r.status });
+  return j;
+}
+const val = v => v == null ? null : "stringValue" in v ? v.stringValue : "integerValue" in v ? +v.integerValue : "doubleValue" in v ? v.doubleValue
+  : "booleanValue" in v ? v.booleanValue : "timestampValue" in v ? { toMillis: () => Date.parse(v.timestampValue) }
+  : "mapValue" in v ? obj(v.mapValue.fields || {}) : "arrayValue" in v ? (v.arrayValue.values || []).map(val) : null;
+const obj = f => Object.fromEntries(Object.entries(f || {}).map(([k, v]) => [k, val(v)]));
+async function listar(col) {
+  const out = []; let tok = "";
+  do {
+    const j = await rest(`/${col}?pageSize=300${tok ? `&pageToken=${encodeURIComponent(tok)}` : ""}`);
+    for (const d of j.documents || []) out.push({ id: d.name.split("/").pop(), ...obj(d.fields) });
+    tok = j.nextPageToken || "";
+  } while (tok);
+  return out;
+}
+async function agregar(coleccion, aggregations) {
+  const j = await rest(":runAggregationQuery", { method: "POST", body: JSON.stringify({ structuredAggregationQuery: { structuredQuery: { from: [{ collectionId: coleccion, allDescendants: true }] }, aggregations } }) });
+  return obj(j[0]?.result?.aggregateFields);
+}
+async function topProductos() {
+  const j = await rest(":runQuery", { method: "POST", body: JSON.stringify({ structuredQuery: { from: [{ collectionId: "productos" }], orderBy: [{ field: { fieldPath: "usos" }, direction: "DESCENDING" }], limit: 15 } }) });
+  return j.filter(x => x.document).map(x => obj(x.document.fields));
+}
+// ¿esta cuenta puede leer? (404 = puede, el documento simplemente no existe)
+async function probarAcceso() {
+  try { await rest("/admin/acceso"); }
+  catch (e) { if (e.http === 404 && !/database/i.test(e.message)) return; throw e; }
+}
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const ms = t => t?.toMillis ? t.toMillis() : typeof t === "number" ? t : 0;
 const DIA = 86400000;
@@ -140,18 +176,20 @@ onAuthStateChanged(auth, async u => {
   try { claims = (await u.getIdTokenResult(true)).claims; } catch {}
   let e = null;
   for (let i = 0; i < 3; i++) {             // reintenta: la primera conexión a veces tarda
-    try { await conTiempo(getDoc(doc(db, "admin", "acceso")), 15000); e = null; break; }
-    catch (err) { e = err; if (err?.code === "permission-denied") break; await new Promise(r => setTimeout(r, 1500)); }
+    try { await probarAcceso(); e = null; break; }
+    catch (err) { e = err; if (err?.http && err.http !== 503) break; await new Promise(r => setTimeout(r, 1500)); }
   }
   if (e) {
     $("#panel").hidden = true; $("#gate").hidden = false;
     const code = e?.code || "", provs = u.providerData.map(p => p.providerId).join(", ") || "—";
-    const motivo = code === "permission-denied"
+    const motivo = e?.http === 403 && /app ?check/i.test(e.message) ? "Firebase pide App Check para la base de datos. En Firebase → App Check → APIs → Cloud Firestore, tocá «Dejar de aplicar» (Unenforce)."
+      : e?.http === 404 ? "No se encontró la base de datos de Firestore en este proyecto. Revisá en Firebase → Firestore Database que exista la base «(default)»."
+      : code === "PERMISSION_DENIED" || code === "permission-denied"
       ? `Firebase rechazó la cuenta ${u.email}: las reglas publicadas no la reconocen como administradora (o todavía no se publicaron).`
       : code === "unavailable" || /offline/i.test(e?.message || "")
         ? "No hay conexión con Firebase. Revisá internet y probá de nuevo."
         : `Error: ${code || e?.message}`;
-    $("#gateErr").innerHTML = `${motivo}<br><br><small>Datos para revisar: mail <b>${u.email}</b> · verificado <b>${u.emailVerified ? "sí" : "no"}</b> (token: ${claims.email_verified ? "sí" : "no"}) · entra con <b>${provs}</b> · proyecto <b>${app.options.projectId}</b> · código <b>${code || "—"}</b></small>`;
+    $("#gateErr").innerHTML = `${motivo}<br><br><small>Datos para revisar: mail <b>${u.email}</b> · verificado <b>${u.emailVerified ? "sí" : "no"}</b> (token: ${claims.email_verified ? "sí" : "no"}) · entra con <b>${provs}</b> · proyecto <b>${PROYECTO}</b> · código <b>${code || "—"}</b>${e?.http != null ? ` · HTTP <b>${e.http}</b>` : ""}<br>Mensaje de Google: <i>${String(e?.message || "").replace(/</g, "&lt;").slice(0, 220)}</i></small>`;
     $("#gateErr").hidden = false;
     return;
   }
@@ -166,22 +204,22 @@ async function cargar() {
   $("#contenido").innerHTML = `<div class="cargando">Cargando estadísticas…</div>`;
   let us, casas, nItems, compras, top;
   try {
-  [us, casas, nItems, compras, top] = await Promise.all([
-    conTiempo(getDocs(collection(db, "usuarios")), 40000),
-    conTiempo(getDocs(collection(db, "hogar")), 40000),
-    intentar(async () => (await getCountFromServer(collectionGroup(db, "items"))).data().count, null),
-    intentar(async () => (await getAggregateFromServer(collectionGroup(db, "compras"), { n: count(), total: sum("total") })).data(), null),
-    intentar(async () => (await getDocs(query(collection(db, "productos"), orderBy("usos", "desc"), limit(15)))).docs.map(d => d.data()), []),
-  ]);
+    [us, casas, nItems, compras, top] = await Promise.all([
+      listar("usuarios"),
+      listar("hogar"),
+      intentar(async () => (await agregar("items", [{ alias: "n", count: {} }])).n, null),
+      intentar(async () => { const r = await agregar("compras", [{ alias: "n", count: {} }, { alias: "total", sum: { field: { fieldPath: "total" } } }]); return { n: r.n, total: r.total }; }, null),
+      intentar(() => topProductos(), []),
+    ]);
   } catch (e) {
-    const msg = e?.code === "permission-denied" ? "Firebase no deja leer los usuarios: revisá que las reglas nuevas estén publicadas." : e?.code === "unavailable" ? "Firebase no respondió a tiempo." : "No se pudieron leer los datos: " + (e?.message || e);
+    const msg = e?.http === 403 ? "Firebase no deja leer los usuarios (" + e.message + "). Revisá que las reglas nuevas estén publicadas." : e?.code === "unavailable" ? "Firebase no respondió a tiempo." : "No se pudieron leer los datos: " + (e?.message || e);
     $("#contenido").innerHTML = `<div class="cargando">${msg}<br><br><button class="btn" id="btnReintentar">Reintentar</button></div>`;
     $("#btnReintentar").onclick = () => cargar();
     return;
   }
   datos = {
-    usuarios: us.docs.map(d => ({ id: d.id, ...d.data() })),
-    casas: casas.docs.map(d => ({ id: d.id, ...d.data() })),
+    usuarios: us,
+    casas: casas,
     nItems, compras, top, cuando: new Date(),
   };
   pintar();
