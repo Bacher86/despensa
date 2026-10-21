@@ -188,7 +188,10 @@ async function topProductos() {
 // ¿esta cuenta puede leer? (404 = puede, el documento simplemente no existe)
 async function probarAcceso() {
   try { await rest("/admin/acceso"); }
-  catch (e) { if (e.http === 404 && !/does not exist/i.test(e.message)) return; throw e; }
+  catch (e) { if (!(e.http === 404 && !/does not exist/i.test(e.message))) throw e; }
+  // y que pueda listar usuarios (lo que necesitan las estadísticas)
+  try { await rest("/usuarios?pageSize=1"); }
+  catch (e) { e.message = "Firebase deja entrar pero no listar usuarios: " + e.message + ". Falta publicar las reglas nuevas (con «allow list: if esAdmin();» en usuarios)."; throw e; }
 }
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const ms = t => t?.toMillis ? t.toMillis() : typeof t === "number" ? t : 0;
@@ -399,17 +402,17 @@ async function intentar(fn, def) { try { return await conTiempo(fn()); } catch (
 
 async function cargar() {
   $("#contenido").innerHTML = `<div class="cargando">Cargando estadísticas…</div>`;
-  let us, casas, nItems, compras, top;
+  let us, casas, nItems, compras, top; const faltan = [];
   try {
     [us, casas, nItems, compras, top] = await Promise.all([
-      listar("usuarios"),
-      listar("hogar"),
+      listar("usuarios").catch(e => { e.coleccion = "usuarios"; throw e; }),
+      listar("hogar").catch(e => { if (e.http === 403) { faltan.push("casas"); return []; } throw e; }),
       intentar(async () => (await agregar("items", [{ alias: "n", count: {} }])).n, null),
       intentar(async () => { const r = await agregar("compras", [{ alias: "n", count: {} }, { alias: "total", sum: { field: { fieldPath: "total" } } }]); return { n: r.n, total: r.total }; }, null),
       intentar(() => topProductos(), []),
     ]);
   } catch (e) {
-    const msg = e?.http === 403 ? "Firebase no deja leer los usuarios (" + e.message + "). Revisá que las reglas nuevas estén publicadas." : e?.code === "unavailable" ? "Firebase no respondió a tiempo." : "No se pudieron leer los datos: " + (e?.message || e);
+    const msg = e?.http === 403 ? "Firebase no deja leer «" + (e.coleccion || "datos") + "» (" + e.message + ").<br>Las reglas que están activas en Firebase no son las nuevas: en Firestore → Reglas tiene que figurar <b>esAdmin()</b> dentro de <b>match /usuarios</b>, y al tocar Publicar no tiene que salir ningún cartel rojo." : e?.code === "unavailable" ? "Firebase no respondió a tiempo." : "No se pudieron leer los datos: " + (e?.message || e);
     $("#contenido").innerHTML = `<div class="cargando">${msg}<br><br><button class="btn" id="btnReintentar">Reintentar</button></div>`;
     $("#btnReintentar").onclick = () => cargar();
     return;
@@ -417,7 +420,7 @@ async function cargar() {
   datos = {
     usuarios: us,
     casas: casas,
-    nItems, compras, top, cuando: new Date(),
+    nItems, compras, top, cuando: new Date(), faltan,
   };
   pintar();
 }
@@ -478,7 +481,7 @@ function pintar() {
   const maxPlat = Math.max(1, ...plats.map(p => p[1]));
   const barriosListos = k.barrios.filter(b => b.casas >= MIN_CASAS_COMERCIO).length;
 
-  $("#contenido").innerHTML = `
+  $("#contenido").innerHTML = (datos.faltan?.length ? `<div class="err" style="margin:10px 0">Firebase no deja leer: ${datos.faltan.join(", ")}. Revisá que estén publicadas las reglas nuevas.</div>` : "") + `
     <div class="kpis">
       <div class="kpi"><small>Usuarios registrados</small><b>${n0(k.U.length)}</b><span>${n0(k.completos.length)} con datos completos</span></div>
       <div class="kpi"><small>Casas</small><b>${n0(k.C.length)}</b><span>${n0(k.compartidas)} con más de una persona</span></div>
