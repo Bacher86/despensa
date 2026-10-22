@@ -176,14 +176,18 @@ const val = v => v == null ? null : "stringValue" in v ? v.stringValue : "intege
   : "booleanValue" in v ? v.booleanValue : "timestampValue" in v ? { toMillis: () => Date.parse(v.timestampValue) }
   : "mapValue" in v ? obj(v.mapValue.fields || {}) : "arrayValue" in v ? (v.arrayValue.values || []).map(val) : null;
 const obj = f => Object.fromEntries(Object.entries(f || {}).map(([k, v]) => [k, val(v)]));
+// Lista una colección con una consulta (esta base no acepta el pedido de "listar documentos")
 async function listar(col) {
-  const out = []; let tok = "";
-  do {
-    const j = await rest(`/${col}?pageSize=300${tok ? `&pageToken=${encodeURIComponent(tok)}` : ""}`);
-    for (const d of j.documents || []) out.push({ id: d.name.split("/").pop(), ...obj(d.fields) });
-    tok = j.nextPageToken || "";
-  } while (tok);
-  return out;
+  const out = []; let desde = null;
+  for (;;) {
+    const q = { from: [{ collectionId: col }], orderBy: [{ field: { fieldPath: "__name__" }, direction: "ASCENDING" }], limit: 500 };
+    if (desde) q.startAt = { values: [{ referenceValue: desde }], before: false };
+    const j = await rest(":runQuery", { method: "POST", body: JSON.stringify({ structuredQuery: q }) });
+    const docs = (Array.isArray(j) ? j : []).filter(x => x.document).map(x => x.document);
+    for (const d of docs) out.push({ id: d.name.split("/").pop(), ...obj(d.fields) });
+    if (docs.length < 500) return out;
+    desde = docs[docs.length - 1].name;
+  }
 }
 async function agregar(coleccion, aggregations) {
   const j = await rest(":runAggregationQuery", { method: "POST", body: JSON.stringify({ structuredAggregationQuery: { structuredQuery: { from: [{ collectionId: coleccion, allDescendants: true }] }, aggregations } }) });
@@ -653,4 +657,4 @@ $("#btnCsv").onclick = () => {
 };
 </script>
 </body>
-</html> 
+</html>
