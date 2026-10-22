@@ -3,15 +3,16 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Despensa de Casa</title>
+<title>Kai</title>
 <meta name="theme-color" content="#f2f3ec" media="(prefers-color-scheme: light)">
-<meta name="theme-color" content="#1b1d17" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#171a12" media="(prefers-color-scheme: dark)">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
-<meta name="apple-mobile-web-app-title" content="Despensa">
+<meta name="apple-mobile-web-app-title" content="Kai">
 <link rel="manifest" href="manifest.webmanifest">
-<link rel="icon" href="icon-192.png" type="image/png">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="alternate icon" href="icon-192.png" type="image/png">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link rel="modulepreload" href="https://www.gstatic.com/firebasejs/13.0.0/firebase-app.js">
 <link rel="modulepreload" href="https://www.gstatic.com/firebasejs/13.0.0/firebase-auth.js">
@@ -23,9 +24,10 @@
 <style>
 /* Layout: app de una columna, barra de pestañas abajo, filas de stock con stepper a la derecha */
 :root{
-  /* Paleta de despensa: lino, oliva, mostaza, tomate y berenjena */
-  --bg:#f2f3ec; --surface:#fdfdf9; --ink:#23271d; --muted:#676c5c; --line:#e1e3d6;
+  /* Paleta de Kai (manual de marca): lino, papel, tinta, oliva, tomate, mostaza */
+  --bg:#f2f3ec; --surface:#fbfcf6; --ink:#23271d; --muted:#5f6552; --line:#e1e3d6;
   --accent:#56632f; --accent-ink:#fbfcf6; --accent-soft:#e7ebd6;
+  --tomate:#d4532b; --tomate-texto:#b8431f; --mostaza:#e0a52a; --oliva-profundo:#3f4a20;
   --warn:#8a6512; --warn-bg:#f6edcf; --bad:#ad3a2b; --bad-bg:#f8e2dc; --info:#6a3f6e; --info-bg:#f0e5f0;
   --f-display:"Young Serif", Georgia, "Times New Roman", serif;
   --f-body:"Figtree", system-ui, -apple-system, "Segoe UI", sans-serif;
@@ -33,8 +35,9 @@
 }
 @media (prefers-color-scheme: dark){
   :root{
-    --bg:#1b1d17; --surface:#24271f; --ink:#ecebe2; --muted:#a3a693; --line:#353a2d;
-    --accent:#b3c47f; --accent-ink:#1b1d17; --accent-soft:#333b22;
+    --bg:#171a12; --surface:#22261b; --ink:#eceee3; --muted:#a7ad98; --line:#353a2b;
+    --accent:#a9b86c; --accent-ink:#171a12; --accent-soft:#333b22;
+    --tomate:#f0784f; --tomate-texto:#f0784f; --mostaza:#e8b74a;
     --warn:#e2b75a; --warn-bg:#3a2f14; --bad:#f09a88; --bad-bg:#3d1f19; --info:#d6a8d8; --info-bg:#35233a;
     color-scheme:dark;
   }
@@ -470,6 +473,16 @@ body{font-size:16px;line-height:1.5;letter-spacing:.005em}
 h1{font:400 1.6rem/1.1 var(--f-display);letter-spacing:0}
 h2{font:400 1.18rem/1.2 var(--f-display);text-transform:none;letter-spacing:0;color:var(--ink);margin:26px 0 10px}
 .gate-card h1{font-size:2.5rem;line-height:1.05}
+/* marca Kai */
+.kai-logo{display:block;height:92px;width:auto}
+:root{--tk-fondo:#3f4a20;--tk-tinta:#f2f3ec;--tk-acento:#e0a52a}
+@media (prefers-color-scheme: dark){:root{--tk-fondo:#fbfcf6;--tk-tinta:#23271d;--tk-acento:#d4532b}}
+.gate-card .marca{margin:0;font:inherit}
+.eslogan{margin:-4px 0 0;font:400 1.55rem/1.15 var(--f-display);color:var(--ink);text-wrap:balance}
+.splash .kai-logo{height:56px}
+.pie-marca{display:grid;justify-items:center;gap:6px;margin:28px 0 8px;color:var(--muted);font-size:.85rem;text-align:center}
+.pie-marca .kai-logo{height:34px}
+.tab[aria-selected="true"] span::after{content:"";display:inline-block;width:5px;height:5px;border-radius:50%;background:var(--tomate);margin-left:3px;vertical-align:.45em}
 .gate-card{gap:16px}
 header.top{border-bottom:0;background:color-mix(in srgb,var(--bg) 92%,transparent);backdrop-filter:saturate(1.2) blur(8px);-webkit-backdrop-filter:saturate(1.2) blur(8px)}
 header.top .wrap{padding-block:12px}
@@ -569,7 +582,7 @@ header.top h1{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:now
 </head>
 <body>
 
-<div class="splash" id="splash"><div><img src="icon-192.png" alt=""><div class="spin" aria-hidden="true"></div><span>Cargando la despensa…</span></div></div>
+<div class="splash" id="splash"><div><svg class="kai-logo tk-mini" viewBox="0 0 208 140" role="img" aria-label="Kai"><path d="M4 14Q4 4 14 4H194Q204 4 204 14V124L192.89 135L181.78 124L170.67 135L159.56 124L148.44 135L137.33 124L126.22 135L115.11 124L104.00 135L92.89 124L81.78 135L70.67 124L59.56 135L48.44 124L37.33 135L26.22 124L15.11 135L4.00 124Z" fill="var(--tk-fondo)"/><path d="M50.99 83.20L37.91 83.20L37.91 36.70L52.23 36.70L52.23 63.98L73.25 36.70L88.38 36.70L72.75 56.17L89.06 83.20L72.69 83.20L63.64 67.45L50.99 83.20ZM110.51 36.70L129.61 36.70L150.44 83.20L135 83.20L131.47 74.83L108.65 74.83L105.12 83.20L89.74 83.20L110.51 36.70ZM113.49 63.30L126.63 63.30L120.06 47.61L113.49 63.30ZM155.65 83.20L155.65 36.70L170.09 36.70L170.09 83.20L155.65 83.20Z" fill="var(--tk-tinta)"/></svg><div class="spin" aria-hidden="true"></div><span>¿Qué hay? Vamos a averiguarlo.</span></div></div>
 
 <div class="install" id="install" hidden role="dialog" aria-labelledby="installTit">
   <img src="icon-192.png" alt="">
@@ -582,8 +595,9 @@ header.top h1{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:now
 
 <section class="gate" id="gate" hidden>
   <div class="gate-card">
-    <h1>Despensa de Casa</h1>
-    <p>Sabé qué hay en casa, recibí un aviso cuando algo se acaba y armá la lista del súper sola.</p>
+    <h1 class="marca"><svg class="kai-logo tk-grande" viewBox="0 0 248 172" role="img" aria-label="Kai"><path d="M4 16Q4 4 16 4H232Q244 4 244 16V154L233.09 167L222.18 154L211.27 167L200.36 154L189.45 167L178.55 154L167.64 167L156.73 154L145.82 167L134.91 154L124.00 167L113.09 154L102.18 167L91.27 154L80.36 167L69.45 154L58.55 167L47.64 154L36.73 167L25.82 154L14.91 167L4.00 154Z" fill="var(--tk-fondo)"/><path d="M67.57 91L53.64 91L53.64 41.50L68.89 41.50L68.89 70.54L91.26 41.50L107.37 41.50L90.74 62.22L108.09 91L90.67 91L81.03 74.24L67.57 91ZM130.93 41.50L151.26 41.50L173.43 91L157 91L153.24 82.09L128.95 82.09L125.19 91L108.82 91L130.93 41.50ZM134.10 69.81L148.09 69.81L141.09 53.12L134.10 69.81ZM178.98 91L178.98 41.50L194.36 41.50L194.36 91L178.98 91Z" fill="var(--tk-tinta)"/><path d="M28 112H220" stroke="var(--tk-tinta)" stroke-width="2" stroke-dasharray="4 5" opacity=".7"/></svg></h1>
+    <p class="eslogan">Con lo que hay, ¿alcanza?</p>
+    <p>Kai te dice qué hay en tu casa, qué cocinar con eso y qué falta comprar. Te avisa antes de que algo se acabe y te arma la lista del súper sola.</p>
     <div class="info" id="invAviso" hidden>Te invitaron a una casa. Creá tu cuenta o entrá y te sumamos.</div>
     <div class="seg" id="segGate">
       <button type="button" data-modo="crear" aria-pressed="true">Crear cuenta</button>
@@ -718,7 +732,7 @@ header.top h1{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:now
       <h2 style="margin-top:6px">Tus logros</h2>
       <div class="panel" id="logros"></div>
       <div class="reco">
-        <b>Recomendá Despensa</b>
+        <b>Recomendá Kai</b>
         <p>Pasale la app a amigos y vecinos. Mientras más casas de tu barrio la usen, más promociones van a llegar.</p>
         <div class="actions" style="margin-top:0">
           <a class="btn" id="btnRecoWa" href="#" target="_blank" rel="noopener">WhatsApp</a>
@@ -774,6 +788,7 @@ header.top h1{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:now
         <button class="btn ghost" id="btnDejar">Salir de esta casa</button>
         <button class="btn danger" id="btnBorrarCuenta">Eliminar mi cuenta</button>
       </div>
+      <div class="pie-marca"><svg class="kai-logo tk-mini" viewBox="0 0 208 140" role="img" aria-label="Kai"><path d="M4 14Q4 4 14 4H194Q204 4 204 14V124L192.89 135L181.78 124L170.67 135L159.56 124L148.44 135L137.33 124L126.22 135L115.11 124L104.00 135L92.89 124L81.78 135L70.67 124L59.56 135L48.44 124L37.33 135L26.22 124L15.11 135L4.00 124Z" fill="var(--tk-fondo)"/><path d="M50.99 83.20L37.91 83.20L37.91 36.70L52.23 36.70L52.23 63.98L73.25 36.70L88.38 36.70L72.75 56.17L89.06 83.20L72.69 83.20L63.64 67.45L50.99 83.20ZM110.51 36.70L129.61 36.70L150.44 83.20L135 83.20L131.47 74.83L108.65 74.83L105.12 83.20L89.74 83.20L110.51 36.70ZM113.49 63.30L126.63 63.30L120.06 47.61L113.49 63.30ZM155.65 83.20L155.65 36.70L170.09 36.70L170.09 83.20L155.65 83.20Z" fill="var(--tk-tinta)"/></svg><span>Con lo que hay, ¿alcanza?</span></div>
     </section>
   </main>
 
@@ -1451,7 +1466,7 @@ $("#btnBorrarCuenta").onclick = async () => {
 };
 
 /* ---------- recomendar la app ---------- */
-const textoRecomendar = () => `Uso Despensa de Casa para saber qué falta en casa, que me avise cuando algo se acaba y armar la lista del súper sola. Es gratis: ${linkRecomendar()}`;
+const textoRecomendar = () => `Con lo que hay, ¿alcanza? Uso Kai para saber qué hay en casa, qué cocinar con eso y qué falta comprar. Te arma la lista del súper sola. Es gratis: ${linkRecomendar()}`;
 $("#btnRecoWa").onclick = () => { $("#btnRecoWa").href = "https://wa.me/?text=" + encodeURIComponent(textoRecomendar()); };
 $("#btnRecoCopiar").onclick = async () => {
   try { await navigator.clipboard.writeText(textoRecomendar()); toast("✓ Mensaje copiado, pegalo donde quieras"); }
@@ -1650,8 +1665,8 @@ function renderDespensa() {
   const vis = items.filter(i => (cat === "Todas" || catDe(i) === cat) && (!q || (i.nombre || "").toLowerCase().includes(q) || (i.codigo || "") === q));
   if (!cargado) { $("#stock").innerHTML = `<div class="cargando"><div class="spin"></div>Cargando productos…</div>`; return; }
   if (!items.length) {
-    $("#stock").innerHTML = `<div class="empty" style="margin-top:12px"><strong>La despensa está vacía</strong>
-      <span>Agregá productos con el botón +, escaneá un código, o cargá una despensa de ejemplo para arrancar.</span>
+    $("#stock").innerHTML = `<div class="empty" style="margin-top:12px"><strong>Todavía no sabemos qué hay</strong>
+      <span>Escaneá el ticket del súper, decilo en voz alta o agregá productos con el +. También podés arrancar con una despensa de ejemplo.</span>
       <button class="btn" data-seed>Cargar productos de ejemplo</button></div>`;
     return;
   }
@@ -4024,7 +4039,7 @@ function renderLogros() {
 /* ---------- compartir (menú del teléfono o WhatsApp), siempre con el link de la app ---------- */
 async function compartir(titulo, texto) {
   lsSet("compartio", "1"); revisarLogrosLuego();
-  const full = `${texto}\n\n📲 Despensa de Casa: ${linkRecomendar()}`;
+  const full = `${texto}\n\n📲 Kai · con lo que hay, ¿alcanza?: ${linkRecomendar()}`;
   if (navigator.share) {
     try { await navigator.share({ title: titulo, text: full }); return; }
     catch (e) { if (e?.name === "AbortError") return; }
@@ -4042,7 +4057,7 @@ document.addEventListener("click", e => {
   const t = e.target.closest("[data-compartirrec],[data-compartirmenu],[data-compartirlogros]"); if (!t) return;
   if ("compartirrec" in t.dataset && recAbierta) compartir(recAbierta.rec.n, textoReceta(recAbierta.rec));
   if ("compartirmenu" in t.dataset) compartir("Menú de la semana", textoMenu());
-  if ("compartirlogros" in t.dataset) { const r = racha(), n = LOGROS.filter(l => logrosCasa()[l.id]).length; compartir("Mis logros", `🏅 Llevo ${r} semana${r === 1 ? "" : "s"} seguidas con la casa en orden y ${n} logros en Despensa de Casa. ¿Te sumás?`); }
+  if ("compartirlogros" in t.dataset) { const r = racha(), n = LOGROS.filter(l => logrosCasa()[l.id]).length; compartir("Mis logros", `🏅 Llevo ${r} semana${r === 1 ? "" : "s"} seguidas con la casa en orden y ${n} logros en Kai. ¿Te sumás?`); }
 });
 
 /* ---------- precios de supermercados y tu inflación ----------
