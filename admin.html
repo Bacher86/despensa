@@ -305,6 +305,34 @@ async function entrar(u) {
   cargar();
 }
 
+// ---- diagnóstico: prueba uno por uno qué deja leer Firebase ----
+async function diagnostico() {
+  const box = $("#diag"); box.innerHTML = `<div class="cargando">Probando…</div>`;
+  const u = auth.currentUser; let c = {};
+  try { c = (await u.getIdTokenResult(true)).claims; } catch (e) { c = { error: e.message }; }
+  const pruebas = [
+    ["Reglas v6 publicadas", "GET", "/reglas/v6", "404"],
+    ["Documento inventado", "GET", "/reglas/zz" + Date.now(), "403"],
+    ["Marca de admin", "GET", "/admin/acceso", "404"],
+    ["Mi propio usuario", "GET", "/usuarios/" + u.uid, "404"],
+    ["Lista de usuarios", "GET", "/usuarios?pageSize=1", "200"],
+    ["Consulta de usuarios", "POST", ":runQuery", "200", { structuredQuery: { from: [{ collectionId: "usuarios" }], limit: 1 } }],
+    ["Lista de casas", "GET", "/hogar?pageSize=1", "200"],
+    ["Lista de anuncios", "GET", "/anuncios?pageSize=1", "200"],
+    ["Lista de productos", "GET", "/productos?pageSize=1", "200"],
+  ];
+  const filas = [];
+  for (const [n, m, p, esp, body] of pruebas) {
+    let r;
+    try { await rest(p, body ? { method: m, body: JSON.stringify(body) } : { method: m }); r = "200"; }
+    catch (e) { r = String(e.http) + (e.http === 404 || e.http === 403 ? "" : " " + e.message.slice(0, 60)); }
+    filas.push(`<tr><td>${n}</td><td class="n">${esc(r)}</td><td class="n">${esp}</td><td>${r.startsWith(esp) ? "✓" : "✗"}</td></tr>`);
+  }
+  box.innerHTML = `<div class="panel tabla" style="margin-top:12px"><b>Mandale una captura de esto a Claude</b>
+    <table><thead><tr><th>Prueba</th><th class="n">Dio</th><th class="n">Esperado</th><th></th></tr></thead><tbody>${filas.join("")}</tbody></table>
+    <p class="nota">Cuenta: ${esc(c.email || u.email)} · proveedor: ${esc(c.firebase?.sign_in_provider || "—")} · proyecto del token: ${esc(c.aud || "—")} · base: ${esc(BASE_DATOS)} · uid: ${esc(u.uid)}</p></div>`;
+}
+
 // ---------------- PUBLICIDAD ----------------
 const ESPACIOS = {
   lista:      { n: "Lista del súper", d: "Tarjeta arriba de la lista de compras. Rota cada 8 s.", w: "La ven justo cuando están por comprar" },
@@ -482,8 +510,9 @@ async function cargar() {
     ]);
   } catch (e) {
     const msg = e?.http === 403 ? "Firebase no deja leer «" + (e.coleccion || "datos") + "» (" + e.message + ").<br>Las reglas que están activas en Firebase no son las nuevas: en Firestore → Reglas tiene que figurar <b>esAdmin()</b> dentro de <b>match /usuarios</b>, y al tocar Publicar no tiene que salir ningún cartel rojo." : e?.code === "unavailable" ? "Firebase no respondió a tiempo." : "No se pudieron leer los datos: " + (e?.message || e);
-    $("#contenido").innerHTML = `<div class="cargando">${msg}<br><br><button class="btn" id="btnReintentar">Reintentar</button></div>`;
+    $("#contenido").innerHTML = `<div class="cargando">${msg}<br><br><button class="btn" id="btnReintentar">Reintentar</button> <button class="btn ghost" id="btnDiag">Diagnóstico</button></div><div id="diag"></div>`;
     $("#btnReintentar").onclick = () => cargar();
+    $("#btnDiag").onclick = diagnostico;
     return;
   }
   datos = {
