@@ -20,7 +20,7 @@
 <link rel="preconnect" href="https://firestore.googleapis.com">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Young+Serif&family=Figtree:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Young+Serif&family=Figtree:wght@400;500;600;700&family=Unbounded:wght@700;800&display=swap">
 <style>
 /* Layout: app de una columna, barra de pestañas abajo, filas de stock con stepper a la derecha */
 :root{
@@ -578,6 +578,48 @@ header.top h1{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:now
 }
 .menu-acc{gap:14px}
 .menu-acc .linkbtn{white-space:nowrap;padding:4px 0}
+
+/* ---------- Kai: estilo ticket (manual de marca) ---------- */
+:root{--f-kai:"Unbounded","Figtree",system-ui,sans-serif;--prof:#3f4a20;--prof-ink:#f2f3ec;--papel:#fbfcf6;
+  --dash:repeating-linear-gradient(90deg,var(--line) 0 7px,transparent 7px 13px);
+  --dientes:linear-gradient(#000 0 0) top/100% calc(100% - 9px) no-repeat,conic-gradient(from -45deg at bottom,#0000,#000 1deg 89deg,#0000 90deg) bottom/18px 9px repeat-x}
+@media (prefers-color-scheme: dark){:root{--prof:#a9b86c;--prof-ink:#171a12;--papel:#22261b;--dash:repeating-linear-gradient(90deg,#4a5040 0 7px,transparent 7px 13px)}}
+/* títulos de pantalla con la letra del logo */
+#titulo{font:800 1.18rem/1 var(--f-kai);text-transform:uppercase;letter-spacing:.02em}
+header.top{position:sticky}
+header.top::after{content:"";position:absolute;left:0;right:0;bottom:0;height:2px;background:var(--dash)}
+/* secciones como renglones de ticket: título + línea punteada */
+main h2{display:flex;align-items:center;gap:12px}
+main h2::after{content:"";flex:1;min-width:28px;height:2px;background:var(--dash)}
+/* botones y selección en oliva profundo */
+.btn{background:var(--prof);color:var(--prof-ink)}
+.scan-btn.primary,.chip[aria-pressed="true"]{background:var(--prof);border-color:var(--prof);color:var(--prof-ink)}
+.semana,.racha{background:var(--prof);color:var(--prof-ink)}
+.tab[aria-selected="true"]{color:var(--ink)}
+.tab[aria-selected="true"] svg{background:var(--prof);color:var(--prof-ink)}
+.tab[aria-selected="true"] span::after{background:var(--mostaza)}
+/* botón + en mostaza, el acento de la marca */
+.fab{background:var(--mostaza);color:#23271d;box-shadow:0 8px 22px color-mix(in srgb,var(--mostaza) 45%,transparent)}
+/* listas como papel de ticket: renglones separados con línea punteada */
+.list{gap:0;background:var(--papel);border:0;box-shadow:0 0 0 1px var(--line)}
+.list > *{background:var(--papel)}
+.list > * + *{background-image:var(--dash);background-size:calc(100% - 32px) 2px;background-position:16px 0;background-repeat:no-repeat}
+/* la lista del súper es un ticket: borde de abajo dentado */
+#compra .list{box-shadow:none;border-radius:16px 16px 0 0;padding-bottom:9px;-webkit-mask:var(--dientes);mask:var(--dientes)}
+/* total como en un ticket */
+.ticket-total{background:var(--papel);border-radius:0;padding:14px 18px 22px;margin-top:14px;box-shadow:none;-webkit-mask:var(--dientes);mask:var(--dientes);background-image:var(--dash);background-size:calc(100% - 36px) 2px;background-position:18px 0;background-repeat:no-repeat}
+.ticket-total span{display:grid;gap:2px}
+.ticket-total b{font:800 .78rem/1 var(--f-kai);letter-spacing:.06em;color:var(--ink)}
+.ticket-total small{font-size:.78rem;color:var(--muted)}
+.total-bar strong{font:800 1.45rem/1 var(--f-kai);letter-spacing:-.01em}
+/* números con presencia */
+.budget .big,.racha-n,.semana-stats b,.infla-box b{font-family:var(--f-kai);font-weight:800;letter-spacing:-.02em}
+.step output{font-variant-numeric:tabular-nums}
+/* avisos y paneles con borde punteado de ticket */
+.super-cta,.menu-cta,.com-cta,.empty{border:2px dashed var(--line);box-shadow:none}
+.aviso{border-radius:16px}
+.usar-primero{border-radius:16px}
+.usar-primero b,.menu-top b,.reco b{font-family:var(--f-kai);font-weight:800;font-size:.86rem;letter-spacing:.04em;text-transform:uppercase}
 </style>
 </head>
 <body>
@@ -1732,7 +1774,7 @@ function renderLista() {
     const conPrecio = lista.filter(i => num(i.precio));
     const total = conPrecio.reduce((s, i) => s + num(i.precio) * aComprar(i), 0);
     const sin = lista.length - conPrecio.length;
-    $("#estimado").innerHTML = `<div class="total-bar"><span>Estimado${sin ? ` (${sin} sin precio)` : ""}</span><strong class="num">${pesos(total)}</strong></div>`;
+    $("#estimado").innerHTML = `<div class="total-bar ticket-total"><span><b>TOTAL ESTIMADO</b>${sin ? `<small>${sin} sin precio</small>` : ""}</span><strong class="num">${pesos(total)}</strong></div>`;
   }
 
   const pronto = items.filter(i => !enLista(i)).map(i => [i, diasRestan(i)]).filter(([, d]) => d != null && d <= 7).sort((a, b) => a[1] - b[1]);
