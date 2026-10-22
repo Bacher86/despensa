@@ -215,6 +215,31 @@ main{padding-block:12px calc(96px + env(safe-area-inset-bottom,0px))}
 .rec-vence{font-size:.8rem;color:var(--info);font-weight:700}
 .rec-falta{font-size:.8rem;color:var(--warn);font-weight:700}
 .rec-meta{margin:-8px 0 0;color:var(--muted);font-size:.9rem}
+/* recetas de la comunidad */
+.tag.com{background:var(--bg);color:var(--muted);font-weight:600}
+.rec-card .rec-foto{width:calc(100% + 28px);margin:-14px -14px 0;height:120px;object-fit:cover;border-radius:20px 20px 0 0;display:block}
+.com-cta{display:flex;align-items:center;justify-content:space-between;gap:12px;background:var(--surface);border:1px dashed var(--line);border-radius:20px;padding:14px 16px;margin:6px 0 10px}
+.com-cta span{color:var(--muted);font-size:.9rem}
+.campo-rec{display:grid;gap:5px}
+.campo-rec>span{font-size:.82rem;font-weight:700;color:var(--muted)}
+.campo-rec input:not([type=file]),.campo-rec textarea{width:100%;padding:10px 12px;border-radius:12px;border:1px solid var(--line);background:var(--bg);color:var(--ink);font:inherit}
+.nr-fila{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.nr-prev{display:flex;flex-wrap:wrap;gap:4px}
+.nr-prev i{font-style:normal;font-size:.78rem;border-radius:999px;padding:2px 9px;background:var(--accent-soft)}
+.nr-prev i small{color:var(--muted)}
+.nr-foto,.rec-foto-big{width:100%;max-height:240px;object-fit:cover;border-radius:16px}
+.rec-autor{display:block;color:var(--muted);font-size:.88rem;margin-top:-4px}
+.rec-autor b{color:var(--ink)}
+.coments{display:grid;gap:10px}
+.coment{background:var(--bg);border-radius:14px;padding:10px 12px;display:grid;gap:3px}
+.coment .cm-top{display:flex;justify-content:space-between;gap:8px;font-size:.82rem;color:var(--muted)}
+.coment .cm-top b{color:var(--ink)}
+.coment p{margin:0;white-space:pre-wrap;overflow-wrap:anywhere}
+.coment .hizo{font-size:.72rem;font-weight:700;color:var(--accent)}
+.cm-x{border:0;background:none;color:var(--muted);font-size:.8rem;text-decoration:underline;padding:0}
+.cm-form{display:grid;gap:8px}
+.cm-form textarea{width:100%;padding:10px 12px;border-radius:12px;border:1px solid var(--line);background:var(--bg);color:var(--ink);font:inherit;resize:vertical}
+.cm-form label{display:flex;gap:6px;align-items:center;font-size:.88rem}
 .rec-lista{display:grid;gap:1px;background:var(--line);border-radius:12px;overflow:hidden}
 .rec-fila{display:flex;gap:10px;align-items:center;background:var(--surface);padding:10px 12px}
 .rec-fila .rec-n{display:grid;flex:1;min-width:0}
@@ -896,6 +921,32 @@ header.top h1{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:now
   <div class="sheet" id="recBody"></div>
 </dialog>
 
+<!-- Compartir una receta con la comunidad -->
+<dialog id="dlgNuevaRec">
+  <form class="sheet" id="fNuevaRec" method="dialog">
+    <h3>Compartir una receta</h3>
+    <p class="rec-meta" style="margin:0">La van a ver todos los que usan la app, con tu nombre.</p>
+    <label class="campo-rec"><span>Nombre de la receta</span><input id="nrNombre" maxlength="80" required placeholder="Ej: Tarta de zapallitos de mi abuela"></label>
+    <div class="nr-fila">
+      <label class="campo-rec"><span>Minutos</span><input id="nrMin" type="number" inputmode="numeric" min="5" max="600" value="30" required></label>
+      <label class="campo-rec"><span>Porciones</span><input id="nrPor" type="number" inputmode="numeric" min="1" max="30" value="4" required></label>
+    </div>
+    <div class="campo-rec"><span>Es</span><div class="chips wrapchips" id="nrTipo"><button type="button" class="chip" data-nrtipo="salado" aria-pressed="true">Salada</button><button type="button" class="chip" data-nrtipo="dulce" aria-pressed="false">Dulce</button></div></div>
+    <div class="campo-rec"><span>Para</span><div class="chips wrapchips" id="nrMom"><button type="button" class="chip" data-nrmom="desayuno" aria-pressed="false">Desayuno</button><button type="button" class="chip" data-nrmom="almuerzo" aria-pressed="true">Almuerzo</button><button type="button" class="chip" data-nrmom="merienda" aria-pressed="false">Merienda</button><button type="button" class="chip" data-nrmom="cena" aria-pressed="true">Cena</button></div></div>
+    <div class="campo-rec"><span>Etiquetas</span><div class="chips wrapchips"><button type="button" class="chip" data-nrtag="veg" aria-pressed="false">Veggie</button><button type="button" class="chip" data-nrtag="horno" aria-pressed="false">Al horno</button><button type="button" class="chip" data-nrtag="gourmet" aria-pressed="false">Para lucirse</button></div></div>
+    <label class="campo-rec"><span>Ingredientes · uno por renglón</span><textarea id="nrIng" rows="6" required placeholder="500 g de harina&#10;2 huevos&#10;1 taza de leche&#10;Sal a gusto&#10;Queso rallado (opcional)"></textarea></label>
+    <div id="nrIngPrev" class="nr-prev"></div>
+    <label class="campo-rec"><span>Cómo se hace · un paso por renglón</span><textarea id="nrPasos" rows="6" required placeholder="Precalentá el horno a 180°.&#10;Mezclá la harina con los huevos.&#10;…"></textarea></label>
+    <label class="campo-rec"><span>Foto (opcional)</span><input id="nrFoto" type="file" accept="image/*"></label>
+    <img id="nrFotoPrev" class="nr-foto" alt="" hidden>
+    <p class="hint" style="margin:0">Compartí recetas propias o de tu familia, sin datos personales ni publicidad. Las que no respeten esto se borran.</p>
+    <div class="sheet-actions">
+      <button class="btn ghost" type="button" data-cerrarnr>Cancelar</button>
+      <button class="btn" type="submit" id="nrGuardar">Publicar receta</button>
+    </div>
+  </form>
+</dialog>
+
 <!-- Editar mis datos -->
 <dialog id="dlgPerfil">
   <form class="sheet" id="frmEditar" novalidate>
@@ -1425,7 +1476,7 @@ function entrarCasa(id) {
   if (tabUrl) history.replaceState(null, "", location.pathname);
   renderCuenta();
   registrarVisita();
-  cargarAnuncios();
+  cargarAnuncios(); cargarComunidad();
   const opt = { serverTimestamps: "estimate" };
   subs.push(onSnapshot(itemsCol(), s => {
     items = s.docs.map(d => ({ id: d.id, ...d.data(opt) })).sort((a, b) => (a.nombre || "").localeCompare(b.nombre || "", "es"));
@@ -2838,6 +2889,53 @@ function agregarALista(nombre, categoria = "Otros") {
    Puntúa cada receta según: lo que hay y si alcanza, lo que vence, los básicos que siempre hay,
    reemplazos posibles, la hora del día, las favoritas de la casa y lo que se cocinó hace poco.   */
 let RECETAS = [], RECETAS_IA = [], recetasCargadas = false, recetasError = false;
+/* ---------- recetas de la comunidad: las cargan los usuarios, todos las ven y comentan ---------- */
+let RECETAS_COM = [];
+const UNI_REC = "kg|kilos?|g|gr|grs|gramos?|ml|cc|l|lt|litros?|tazas?|tacitas?|cucharadas?|cucharaditas?|cdas?|cdtas?|pizcas?|latas?|paquetes?|dientes?|unidades?|u|sobres?|potes?|atados?|ramitas?|ramas?|hojas?|fetas?|rodajas?|vasos?|chorritos?|pu[nñ]ados?|planchas?|tiras?|bandejas?|cajas?|botellas?|frascos?";
+function leerIngrediente(linea) {
+  let s = String(linea).trim().replace(/^\d+[.)]\s+/, "").replace(/^[-•*·]\s*/, "").trim();
+  if (!s) return null;
+  const opc = /\bopcional\b/i.test(s);
+  s = s.replace(/\(?\s*opcional\s*\)?/i, "").replace(/[,.;]+$/, "").trim();
+  let texto = "a gusto", nombre = s;
+  const m = s.match(new RegExp(`^((?:(?:\\d+(?:[.,]\\d+)?(?:\\s*\\/\\s*\\d+)?|½|¼|¾)\\s*|(?:medi[oa]|una?|dos|tres|cuatro|cinco|seis|ocho|diez|doce)\\s+)(?:(?:${UNI_REC})\\.?(?:\\s+|$))?(?:y\\s+medi[oa]\\s+)?(?:de\\s+)?)(.+)$`, "i"));
+  if (m && m[2].trim().length > 1) { texto = m[1].replace(/\s+de\s*$/i, "").trim(); nombre = m[2].trim(); }
+  if (texto === "a gusto") {            // "Harina 300 g", "Huevos x2"
+    const f = nombre.match(new RegExp(`^(.+?)[\\s:,-]+(?:x\\s*)?(\\d+(?:[.,]\\d+)?(?:\\s*\\/\\s*\\d+)?\\s*(?:(?:${UNI_REC})\\.?)?)$`, "i"));
+    if (f && !/^0+$/.test(f[2])) { nombre = f[1].trim(); texto = f[2].trim(); }
+  }
+  const ag = nombre.match(/^(.*?)\s*(?:,\s*)?(a gusto|c\/n|cantidad necesaria|un poco)$/i);
+  if (ag && ag[1]) { nombre = ag[1]; texto = "a gusto"; }
+  nombre = nombre.replace(/^(de|del)\s+/i, "");
+  nombre = nombre.charAt(0).toUpperCase() + nombre.slice(1);
+  return { nombre: nombre.slice(0, 60), texto: texto.slice(0, 40), opc };
+}
+const singular = w => /[lnrdzj]es$/.test(w) && w.length > 4 ? w.slice(0, -2) : /s$/.test(w) && w.length > 3 ? w.slice(0, -1) : w;
+const NO_CLAVE = new Set(["de", "del", "con", "para", "sin", "en", "y", "o", "a", "la", "el", "los", "las", "fresco", "fresca", "picado", "picada", "rallado", "rallada", "grande", "grandes", "chico", "chica", "mediano", "mediana", "maduro", "madura", "entero", "entera"]);
+function clavesDe(nombre) {
+  const w = normal(nombre).replace(/[^a-zñ0-9 ]/g, " ").split(" ").filter(Boolean);
+  const out = new Set();
+  const lleno = w.map(singular).join(" "); if (lleno) out.add(lleno);
+  if (w.length > 1 && w[0].length >= 3 && !NO_CLAVE.has(w[0])) out.add(singular(w[0]));
+  return [...out];
+}
+
+const recetaDeDoc = (id, d) => ({
+  id: "c_" + id, docId: id, comunidad: true, n: d.n || "Receta", t: +d.t || 30, p: +d.p || 2, tipo: d.tipo === "dulce" ? "dulce" : "salado",
+  mom: d.mom || [], prot: "comunidad", tags: d.tags || [], pasos: d.pasos || [],
+  ing: (d.ing || []).map(i => ({ nombre: i.nombre, texto: i.texto || "a gusto", claves: clavesDe(i.nombre), cant: 0, unidad: "u", opc: !!i.opc, no: "" })),
+  autor: d.autor || "Alguien de la comunidad", autorUid: d.autorUid, barrio: d.barrio || "", foto: d.foto || "", comentarios: d.comentarios || 0, hechas: d.hechas || 0, creado: d.creado,
+});
+async function cargarComunidad() {
+  try {
+    const s = await getDocs(query(collection(db, "recetasComunidad"), orderBy("creado", "desc"), limit(300)));
+    RECETAS_COM = s.docs.map(d => recetaDeDoc(d.id, d.data()));
+  } catch (e) { console.warn("recetas de la comunidad:", e); }
+  if (tab === "cocinar") renderCocinar();
+}
+const autorVisible = () => perfil.nombre ? `${perfil.nombre}${perfil.apellido ? " " + perfil.apellido.trim()[0] + "." : ""}` : nombreUsuario().split(" ")[0];
+const haceRec = t => { const d = Math.floor((Date.now() - ms(t)) / DIA); return d <= 0 ? "hoy" : d === 1 ? "ayer" : d < 30 ? `hace ${d} días` : d < 365 ? `hace ${Math.round(d / 30)} mes${Math.round(d / 30) > 1 ? "es" : ""}` : "hace más de un año"; };
+const esMiaRec = r => r.autorUid && r.autorUid === user?.uid;
 import("./recetas.js").then(m => { RECETAS = m.default; recetasCargadas = true; if (tab === "cocinar") renderCocinar(); })
   .catch(() => { recetasCargadas = true; recetasError = true; if (tab === "cocinar") renderCocinar(); });
 
@@ -2932,7 +3030,7 @@ function evaluar(rec, stock = null, hist = historialRecetas()) {
 }
 
 let filtroRec = "todas", buscaRec = "", verTodas = false;
-const FILTROS_REC = [["todas", "Todas"], ["rapidas", "Rápidas"], ["veg", "Veggie"], ["sinhorno", "Sin horno"], ["dulces", "Dulces"], ["gourmet", "Para lucirse"], ["vence", "Usa lo que vence"], ["favs", "Favoritas"]];
+const FILTROS_REC = [["todas", "Todas"], ["comunidad", "De la comunidad"], ["rapidas", "Rápidas"], ["veg", "Veggie"], ["sinhorno", "Sin horno"], ["dulces", "Dulces"], ["gourmet", "Para lucirse"], ["vence", "Usa lo que vence"], ["favs", "Favoritas"]];
 const pasaFiltro = e => {
   const r = e.rec;
   if (filtroRec === "rapidas" && r.t > 20) return false;
@@ -2942,6 +3040,7 @@ const pasaFiltro = e => {
   if (filtroRec === "gourmet" && !(r.tags || []).includes("gourmet")) return false;
   if (filtroRec === "vence" && !e.vence.length) return false;
   if (filtroRec === "favs" && !e.fav) return false;
+  if (filtroRec === "comunidad" && !r.comunidad) return false;
   if (buscaRec) {
     const q = normal(buscaRec);
     if (!normal(r.n).includes(q) && !r.ing.some(i => normal(i.nombre).includes(q) || i.claves.some(c => c.includes(q)))) return false;
@@ -2952,11 +3051,13 @@ const pasaFiltro = e => {
 function tarjetaReceta(e) {
   const r = e.rec;
   const etiquetas = [];
+  if (r.comunidad) etiquetas.push(`<span class="tag com">De ${esc(r.autor)}${r.comentarios ? ` · 💬 ${r.comentarios}` : ""}${r.hechas ? ` · ${r.hechas} la hicieron` : ""}</span>`);
   if (e.fav) etiquetas.push(`<span class="tag fav">♥ Favorita</span>`);
   else if (e.veces >= 2) etiquetas.push(`<span class="tag">Les gusta</span>`);
   if (e.diasDesde != null && e.diasDesde < 7) etiquetas.push(`<span class="tag gris">La hicieron hace ${Math.max(1, Math.round(e.diasDesde))} día${Math.round(e.diasDesde) > 1 ? "s" : ""}</span>`);
   const reemp = e.filas.find(f => f.reemplazo);
   return `<button class="rec-card ${e.vence.length ? "usa-vence" : ""} ${r.ia ? "ia" : ""}" data-rec="${r.id}">
+    ${r.foto ? `<img class="rec-foto" src="${esc(r.foto)}" alt="" loading="lazy">` : ""}
     <span class="rec-top"><b>${esc(r.n)}</b><span class="rec-t num">${r.t} min</span></span>
     ${etiquetas.length ? `<span class="tags">${etiquetas.join("")}</span>` : ""}
     <span class="rec-ings">${e.filas.filter(f => f.tengo || (!f.ing.opc && !f.basico)).map(f => `<i class="${f.tengo ? f.poco ? "poco" : "si" : "no"}">${esc(f.ing.nombre)}${f.poco ? " (poco)" : ""}</i>`).join("")}</span>
@@ -2973,12 +3074,17 @@ function renderCocinar() {
     return;
   }
   const hist = historialRecetas();
-  const evs = [...RECETAS, ...RECETAS_IA].map(r => evaluar(r, null, hist));
+  const evs = [...RECETAS, ...RECETAS_IA, ...RECETAS_COM].map(r => evaluar(r, null, hist));
   const mom = momentoAhora();
   const v = porVencer(3);
   const vis = evs.filter(pasaFiltro);
   let cuerpo;
-  if (buscaRec) {
+  const ctaCom = `<div class="com-cta"><div><b>¿Tenés una receta que te sale bárbara?</b><br><span>Compartila con la comunidad.</span></div><button class="btn" data-nuevarec>+ Compartir</button></div>`;
+  if (filtroRec === "comunidad" && !buscaRec) {
+    const res = vis.sort((a, b) => ms(b.rec.creado) - ms(a.rec.creado));
+    cuerpo = ctaCom + (res.length ? `<h2>Recetas de la comunidad</h2><div class="rec-grid">${res.map(tarjetaReceta).join("")}</div>`
+      : `<div class="empty"><span>Todavía nadie compartió recetas. ¡Sé la primera persona!</span></div>`);
+  } else if (buscaRec) {
     const res = vis.sort((a, b) => a.faltan.length - b.faltan.length || b.score - a.score);
     cuerpo = res.length ? `<h2>${res.length} receta${res.length > 1 ? "s" : ""}</h2><div class="rec-grid">${res.slice(0, 30).map(tarjetaReceta).join("")}</div>`
       : `<div class="empty"><span>No encontramos recetas con "${esc(buscaRec)}".</span></div>`;
@@ -2994,7 +3100,8 @@ function renderCocinar() {
       ${otras.length ? `<h2>${ahora.length ? "También podés hacer" : "Podés hacer ahora"}</h2><div class="rec-grid">${otras.slice(0, filtrando ? 40 : 8).map(tarjetaReceta).join("")}</div>` : ""}
       ${!ahora.length && !otras.length ? `<div class="empty"><span>${items.length ? "Con lo que hay no alcanza para una receta completa. Mirá las de abajo: te falta una sola cosa." : "Cargá lo que tenés en la despensa y acá te sugerimos qué cocinar."}</span></div>` : ""}
       ${ocultas ? `<button class="btn ghost full" data-vertodas style="margin-top:10px">Ver todas las que podés hacer (${ahora.length + otras.length})</button>` : ""}
-      ${casi.length ? `<h2>Te falta una sola cosa</h2><div class="rec-grid">${casi.map(tarjetaReceta).join("")}</div>` : ""}`;
+      ${casi.length ? `<h2>Te falta una sola cosa</h2><div class="rec-grid">${casi.map(tarjetaReceta).join("")}</div>` : ""}
+      ${filtroRec === "todas" ? `<h2>De la comunidad</h2>${ctaCom}${RECETAS_COM.length ? `<div class="rec-grid">${vis.filter(e => e.rec.comunidad).sort((a, b) => ms(b.rec.creado) - ms(a.rec.creado)).slice(0, 4).map(tarjetaReceta).join("")}</div>${RECETAS_COM.length > 4 ? `<button class="btn ghost full" data-frec="comunidad" style="margin-top:10px">Ver las ${RECETAS_COM.length} recetas de la comunidad</button>` : ""}` : ""}` : ""}`;
   }
   $("#cocinar").innerHTML = `
     ${v.length ? `<div class="usar-primero"><b>Usá primero</b><span>${v.map(i => `${esc(i.nombre)} <em>(${textoVence(diasVence(i))})</em>`).join(" · ")}</span></div>` : ""}
@@ -3008,7 +3115,7 @@ function renderCocinar() {
       <div class="chips wrapchips">${BASICOS.map(([k, l]) => `<button class="chip" data-basico="${k}" aria-pressed="${basicosCasa().includes(k)}">${l}</button>`).join("")}</div>
     </details>
     ${IA_ACTIVADA ? `<h2>Más ideas</h2><div class="panel"><p>La IA arma recetas con todo lo que tenés en la despensa, priorizando lo que vence.</p><button class="btn ghost" id="btnIdeasIA">Pedir ideas a la IA</button><div id="iaEstado"></div></div>` : ""}
-    <p class="hint" style="text-align:center;margin-top:18px">${RECETAS.length} recetas · las sugerencias aprenden de lo que cocinan en tu casa</p>`;
+    <p class="hint" style="text-align:center;margin-top:18px">${RECETAS.length + RECETAS_COM.length} recetas${RECETAS_COM.length ? ` (${RECETAS_COM.length} de la comunidad)` : ""} · las sugerencias aprenden de lo que cocinan en tu casa</p>`;
   const inp = $("#buscarRec");
   inp.oninput = () => { buscaRec = inp.value; clearTimeout(inp._t); inp._t = setTimeout(() => { renderCocinar(); const n = $("#buscarRec"); n.focus(); n.setSelectionRange(n.value.length, n.value.length); }, 250); };
   if (IA_ACTIVADA) $("#btnIdeasIA").onclick = ideasIA;
@@ -3019,7 +3126,129 @@ document.addEventListener("click", e => {
   if (e.target.closest("[data-vertodas]")) { verTodas = true; renderCocinar(); return; }
   const bs = e.target.closest("[data-basico]");
   if (bs) { const k = bs.dataset.basico, cur = basicosCasa(); setDoc(casaDoc(), { basicos: cur.includes(k) ? cur.filter(x => x !== k) : [...cur, k] }, { merge: true }); return; }
+  if (e.target.closest("[data-nuevarec]")) { abrirNuevaReceta(); return; }
   const r = e.target.closest("[data-rec]"); if (r) abrirReceta(r.dataset.rec);
+});
+
+/* ---------- recetas de la comunidad: comentarios, publicar, borrar ---------- */
+const comRef = r => doc(db, "recetasComunidad", r.docId);
+async function cargarComentarios(r) {
+  const box = $("#recComents"); if (!box) return;
+  try {
+    const s = await getDocs(query(collection(db, "recetasComunidad", r.docId, "comentarios"), orderBy("ts", "asc"), limit(200)));
+    if (recAbierta?.rec.id !== r.id || !$("#recComents")) return;
+    const cs = s.docs.map(x => ({ id: x.id, ...x.data() }));
+    $("#recComents").innerHTML = cs.length ? cs.map(c => `<div class="coment">
+        <div class="cm-top"><span><b>${esc(c.autor || "Alguien")}</b> · ${c.ts ? haceRec(c.ts) : "recién"}</span>${c.autorUid === user?.uid ? `<button class="cm-x" type="button" data-borrarcom="${c.id}">Borrar</button>` : ""}</div>
+        ${c.hizo ? `<span class="hizo">✓ La hizo</span>` : ""}<p>${esc(c.texto)}</p></div>`).join("")
+      : `<span class="hint">Todavía no hay comentarios. ¿La probaste? Contá cómo te salió.</span>`;
+  } catch (er) { const b = $("#recComents"); if (b) b.innerHTML = `<span class="hint">No se pudieron cargar los comentarios${navigator.onLine ? "" : " (sin conexión)"}.</span>`; }
+}
+async function comentarReceta(btn) {
+  const r = recAbierta.rec, texto = $("#cmTexto").value.trim(), hizo = $("#cmHizo").checked;
+  if (texto.length < 2) { toast("Escribí un comentario"); return; }
+  btn.disabled = true; btn.textContent = "Publicando…";
+  try {
+    await addDoc(collection(db, "recetasComunidad", r.docId, "comentarios"), { texto: texto.slice(0, 500), hizo, autor: autorVisible(), autorUid: user.uid, ts: serverTimestamp() });
+    await updateDoc(comRef(r), { comentarios: increment(1) }).catch(() => {});
+    r.comentarios++;
+    if (hizo) marcarHecha(r, false);
+    $("#cmTexto").value = ""; $("#cmHizo").checked = false;
+    toast("✓ Comentario publicado");
+    cargarComentarios(r);
+  } catch (er) { toast("No se pudo publicar: " + (er.code === "permission-denied" ? "faltan publicar las reglas nuevas en Firebase" : er.message)); }
+  btn.disabled = false; btn.textContent = "Publicar comentario";
+}
+async function borrarComentario(id) {
+  const r = recAbierta.rec;
+  if (!confirm("¿Borrar tu comentario?")) return;
+  try {
+    await deleteDoc(doc(db, "recetasComunidad", r.docId, "comentarios", id));
+    await updateDoc(comRef(r), { comentarios: increment(-1) }).catch(() => {});
+    r.comentarios = Math.max(0, r.comentarios - 1);
+    cargarComentarios(r);
+  } catch (er) { toast("No se pudo borrar: " + er.message); }
+}
+// "la hice": suma una vez por persona
+function marcarHecha(r, avisar) {
+  const k = "hecha:" + r.docId;
+  if (lsGet(k)) { if (avisar) toast("Ya la tenías marcada como hecha"); return; }
+  lsSet(k, "1"); r.hechas++;
+  updateDoc(comRef(r), { hechas: increment(1) }).catch(() => {});
+  if (avisar) toast("✓ ¡Buen provecho! Contale a los demás cómo te salió");
+}
+async function borrarMiReceta(btn) {
+  const r = recAbierta.rec;
+  if (!confirm(`¿Borrar «${r.n}»? Se borra para todos, con sus comentarios.`)) return;
+  btn.disabled = true;
+  try {
+    await deleteDoc(comRef(r));
+    RECETAS_COM = RECETAS_COM.filter(x => x.id !== r.id);
+    $("#dlgReceta").close(); toast("Receta borrada"); renderCocinar();
+  } catch (er) { btn.disabled = false; toast("No se pudo borrar: " + er.message); }
+}
+// formulario para compartir
+let nrFoto = "";
+function abrirNuevaReceta() {
+  if (!user) return;
+  $("#fNuevaRec").reset(); nrFoto = ""; $("#nrFotoPrev").hidden = true; $("#nrIngPrev").innerHTML = "";
+  for (const b of document.querySelectorAll("#dlgNuevaRec [data-nrtipo]")) b.setAttribute("aria-pressed", b.dataset.nrtipo === "salado");
+  for (const b of document.querySelectorAll("#dlgNuevaRec [data-nrmom]")) b.setAttribute("aria-pressed", ["almuerzo", "cena"].includes(b.dataset.nrmom));
+  for (const b of document.querySelectorAll("#dlgNuevaRec [data-nrtag]")) b.setAttribute("aria-pressed", "false");
+  $("#dlgNuevaRec").showModal();
+}
+$("#dlgNuevaRec").addEventListener("click", e => {
+  const b = e.target.closest("button"); if (!b) return;
+  if ("cerrarnr" in b.dataset) { $("#dlgNuevaRec").close(); return; }
+  if (b.dataset.nrtipo) {
+    for (const x of document.querySelectorAll("#dlgNuevaRec [data-nrtipo]")) x.setAttribute("aria-pressed", x === b);
+    const dulce = b.dataset.nrtipo === "dulce";
+    for (const x of document.querySelectorAll("#dlgNuevaRec [data-nrmom]")) x.setAttribute("aria-pressed", dulce ? ["desayuno", "merienda"].includes(x.dataset.nrmom) : ["almuerzo", "cena"].includes(x.dataset.nrmom));
+  }
+  if (b.dataset.nrmom || b.dataset.nrtag) b.setAttribute("aria-pressed", b.getAttribute("aria-pressed") !== "true");
+});
+const lineas = s => s.split(/\n+/).map(x => x.trim()).filter(Boolean);
+$("#nrIng").addEventListener("input", () => {
+  const ings = lineas($("#nrIng").value).map(leerIngrediente).filter(Boolean);
+  $("#nrIngPrev").innerHTML = ings.map(i => `<i>${esc(i.nombre)} <small>${esc(i.texto)}${i.opc ? " · opcional" : ""}</small></i>`).join("");
+});
+$("#nrFoto").addEventListener("change", async e => {
+  const f = e.target.files[0]; if (!f) return;
+  try {
+    const img = await createImageBitmap(f), k = Math.min(1, 1000 / Math.max(img.width, img.height));
+    const c = document.createElement("canvas"); c.width = Math.round(img.width * k); c.height = Math.round(img.height * k);
+    c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
+    let q = .78; nrFoto = c.toDataURL("image/jpeg", q);
+    while (nrFoto.length > 300000 && q > .35) { q -= .1; nrFoto = c.toDataURL("image/jpeg", q); }
+    $("#nrFotoPrev").src = nrFoto; $("#nrFotoPrev").hidden = false;
+  } catch { toast("No se pudo leer la foto"); }
+});
+$("#fNuevaRec").addEventListener("submit", async e => {
+  e.preventDefault();
+  const n = $("#nrNombre").value.trim().replace(/\s+/g, " ");
+  const ing = lineas($("#nrIng").value).map(leerIngrediente).filter(Boolean).slice(0, 40);
+  const pasos = lineas($("#nrPasos").value).map(p => p.replace(/^\d+[.)-]\s*/, "").slice(0, 400)).slice(0, 30);
+  if (n.length < 3) return toast("Poné el nombre de la receta");
+  if (ing.length < 2) return toast("Poné al menos 2 ingredientes, uno por renglón");
+  if (!pasos.length) return toast("Contá cómo se hace");
+  const on = sel => [...document.querySelectorAll(sel)].filter(b => b.getAttribute("aria-pressed") === "true");
+  const datos = {
+    n: n.slice(0, 80), t: Math.max(5, Math.min(600, Math.round(+$("#nrMin").value || 30))), p: Math.max(1, Math.min(30, Math.round(+$("#nrPor").value || 2))),
+    tipo: on("#dlgNuevaRec [data-nrtipo]")[0]?.dataset.nrtipo || "salado",
+    mom: on("#dlgNuevaRec [data-nrmom]").map(b => b.dataset.nrmom), tags: on("#dlgNuevaRec [data-nrtag]").map(b => b.dataset.nrtag),
+    ing, pasos, foto: nrFoto, autor: autorVisible(), autorUid: user.uid, barrio: perfil.barrio || "",
+    comentarios: 0, hechas: 0, creado: serverTimestamp(),
+  };
+  const b = $("#nrGuardar"); b.disabled = true; b.textContent = "Publicando…";
+  try {
+    const nuevo = await addDoc(collection(db, "recetasComunidad"), datos);
+    RECETAS_COM.unshift(recetaDeDoc(nuevo.id, { ...datos, creado: Timestamp.now() }));
+    $("#dlgNuevaRec").close();
+    toast("✓ ¡Gracias! Tu receta ya está en la comunidad");
+    filtroRec = "comunidad"; if (tab === "cocinar") renderCocinar();
+    abrirReceta("c_" + nuevo.id);
+  } catch (er) { toast("No se pudo publicar: " + (er.code === "permission-denied" ? "faltan publicar las reglas nuevas en Firebase" : er.message)); }
+  b.disabled = false; b.textContent = "Publicar receta";
 });
 
 /* ---------- menú de la semana ----------
@@ -3172,7 +3401,7 @@ document.addEventListener("click", e => {
 /* ---------- ver una receta y cocinarla ---------- */
 let recAbierta = null, recDesc = [];
 function abrirReceta(id) {
-  const rec = [...RECETAS, ...RECETAS_IA].find(r => r.id === id); if (!rec) return;
+  const rec = [...RECETAS, ...RECETAS_IA, ...RECETAS_COM].find(r => r.id === id); if (!rec) return;
   recAbierta = evaluar(rec);
   pintarReceta(false);
   if (!$("#dlgReceta").open) $("#dlgReceta").showModal();
@@ -3186,6 +3415,8 @@ function pintarReceta(descontando) {
   const e = recAbierta, r = e.rec;
   if (!descontando) {
     $("#recBody").innerHTML = `<div class="rec-head"><h3>${esc(r.n)}</h3><div class="rec-acc"><button class="fav-btn" data-compartirrec aria-label="Compartir receta"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="m8.6 13.5 6.8 4M15.4 6.5l-6.8 4"/></svg></button>${r.ia ? "" : `<button class="fav-btn ${e.fav ? "on" : ""}" data-favrec aria-label="${e.fav ? "Sacar de favoritas" : "Marcar como favorita"}">${e.fav ? "♥" : "♡"}</button>`}</div></div>
+      ${r.comunidad && r.foto ? `<img class="rec-foto-big" src="${esc(r.foto)}" alt="">` : ""}
+      ${r.comunidad ? `<div class="rec-autor">Compartida por <b>${esc(r.autor)}</b>${r.barrio ? ` · ${esc(r.barrio)}` : ""} · ${haceRec(r.creado)}${r.hechas ? ` · ${r.hechas} ${r.hechas === 1 ? "persona la hizo" : "personas la hicieron"}` : ""}</div>` : ""}
       <p class="rec-meta">${r.t} minutos · ${r.p} porciones${(r.tags || []).includes("veg") ? " · veggie" : ""}${(r.tags || []).includes("horno") ? " · al horno" : ""}${(r.tags || []).includes("gourmet") ? " · para lucirse" : ""}${r.ia ? " · idea de la IA" : ""}${e.diasDesde != null ? ` · la hicieron hace ${Math.max(1, Math.round(e.diasDesde))} días` : ""}</p>
       <div class="rec-lista">${e.filas.map((f, k) => `<div class="rec-fila ${f.tengo ? (f.poco ? "poco" : "si") : f.basico ? "opc" : f.ing.opc ? "opc" : "no"}">
           <span class="rec-ico" aria-hidden="true">${f.tengo ? (f.poco ? "!" : "✓") : f.basico ? "✓" : f.ing.opc ? "·" : "!"}</span>
@@ -3198,8 +3429,17 @@ function pintarReceta(descontando) {
       <ol class="rec-pasos">${r.pasos.map(p => `<li>${esc(p)}</li>`).join("")}</ol>
       <div class="sheet-actions">
         <button class="btn ghost" type="button" data-cerrarrec>Cerrar</button>
-        ${e.usa.length ? `<button class="btn" type="button" data-hice>Hice esta receta</button>` : ""}
-      </div>`;
+        ${e.usa.length ? `<button class="btn" type="button" data-hice>Hice esta receta</button>` : r.comunidad ? `<button class="btn" type="button" data-hicecom>La hice</button>` : ""}
+      </div>
+      ${r.comunidad ? `<h4>Comentarios</h4>
+        <div class="coments" id="recComents"><span class="hint">Cargando comentarios…</span></div>
+        <div class="cm-form">
+          <textarea id="cmTexto" rows="2" maxlength="500" placeholder="¿La hiciste? Contá cómo te salió, qué le cambiaste…"></textarea>
+          <label><input type="checkbox" id="cmHizo"> La hice</label>
+          <button class="btn ghost" type="button" data-comentar>Publicar comentario</button>
+        </div>
+        ${esMiaRec(r) ? `<button class="btn ghost full" type="button" data-borrarmirec style="color:var(--bad);margin-top:6px">Borrar mi receta</button>` : ""}` : ""}`;
+    if (r.comunidad) cargarComentarios(r);
     return;
   }
   if (!recDesc.length) recDesc = e.usa.map(f => ({ it: f.tengo, c: cantDescontar(f.ing, f.tengo) }));
@@ -3217,6 +3457,10 @@ function pintarReceta(descontando) {
 $("#dlgReceta").addEventListener("click", e => {
   const t = e.target.closest("button"); if (!t) return;
   const d = t.dataset;
+  if ("comentar" in d) { comentarReceta(t); return; }
+  if (d.borrarcom) { borrarComentario(d.borrarcom); return; }
+  if ("borrarmirec" in d) { borrarMiReceta(t); return; }
+  if ("hicecom" in d) { marcarHecha(recAbierta.rec, true); t.textContent = "✓ ¡Buen provecho!"; t.disabled = true; return; }
   if ("cerrarrec" in d) $("#dlgReceta").close();
   if ("favrec" in d) {
     const id = recAbierta.rec.id, cur = favoritas();
@@ -3226,7 +3470,7 @@ $("#dlgReceta").addEventListener("click", e => {
     recAbierta = evaluar(recAbierta.rec); pintarReceta(false);
     toast(nueva.includes(id) ? "♥ Guardada en favoritas" : "Sacada de favoritas");
   }
-  if ("hice" in d) { recDesc = []; pintarReceta(true); }
+  if ("hice" in d) { recDesc = []; if (recAbierta.rec.comunidad) marcarHecha(recAbierta.rec, false); pintarReceta(true); }
   if ("volverrec" in d) pintarReceta(false);
   if (d.reclista) {
     const f = recAbierta.filas[Number(d.reclista)];
