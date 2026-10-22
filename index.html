@@ -354,7 +354,7 @@ details.compra .det div{display:flex;justify-content:space-between;gap:8px}
 
 .fab{position:fixed;right:max(16px,calc(50% - 304px));bottom:calc(84px + env(safe-area-inset-bottom,0px));width:58px;height:58px;border-radius:18px;border:0;background:var(--accent);color:var(--accent-ink);font-size:2rem;line-height:1;box-shadow:0 6px 18px rgba(0,0,0,.18);z-index:6}
 nav.tabs{position:fixed;left:0;right:0;bottom:0;z-index:6;background:var(--surface);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom,0px)}
-nav.tabs .wrap{display:grid;grid-template-columns:repeat(5,1fr)}
+nav.tabs .wrap{display:grid;grid-template-columns:repeat(4,1fr)}
 .tab{border:0;background:none;padding:12px 2px 14px;font-weight:700;color:var(--muted);position:relative;font-size:.86rem}
 .tab[aria-selected="true"]{color:var(--accent)}
 .tab[aria-selected="true"]::after{content:"";position:absolute;left:28%;right:28%;top:0;height:3px;border-radius:0 0 3px 3px;background:var(--accent)}
@@ -585,7 +585,8 @@ header.top h1{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:now
   --dientes:linear-gradient(#000 0 0) top/100% calc(100% - 9px) no-repeat,conic-gradient(from -45deg at bottom,#0000,#000 1deg 89deg,#0000 90deg) bottom/18px 9px repeat-x}
 @media (prefers-color-scheme: dark){:root{--prof:#a9b86c;--prof-ink:#171a12;--papel:#22261b;--dash:repeating-linear-gradient(90deg,#4a5040 0 7px,transparent 7px 13px)}}
 /* títulos de pantalla con la letra del logo */
-#titulo{font:800 1.18rem/1 var(--f-kai);text-transform:uppercase;letter-spacing:.02em}
+#titulo{margin:0;line-height:0}
+#titulo .kai-logo{height:44px}
 header.top{position:sticky}
 header.top::after{content:"";position:absolute;left:0;right:0;bottom:0;height:2px;background:var(--dash)}
 /* secciones como renglones de ticket: título + línea punteada */
@@ -707,7 +708,7 @@ main h2::after{content:"";flex:1;min-width:28px;height:2px;background:var(--dash
 <div id="app" hidden>
   <header class="top">
     <div class="wrap">
-      <h1 id="titulo">Despensa</h1>
+      <h1 id="titulo" aria-label="Kai · Despensa"><svg class="kai-logo tk-top" viewBox="0 0 208 140" role="img" aria-label="Kai"><path d="M4 14Q4 4 14 4H194Q204 4 204 14V124L192.89 135L181.78 124L170.67 135L159.56 124L148.44 135L137.33 124L126.22 135L115.11 124L104.00 135L92.89 124L81.78 135L70.67 124L59.56 135L48.44 124L37.33 135L26.22 124L15.11 135L4.00 124Z" fill="var(--tk-fondo)"/><path d="M50.99 83.20L37.91 83.20L37.91 36.70L52.23 36.70L52.23 63.98L73.25 36.70L88.38 36.70L72.75 56.17L89.06 83.20L72.69 83.20L63.64 67.45L50.99 83.20ZM110.51 36.70L129.61 36.70L150.44 83.20L135 83.20L131.47 74.83L108.65 74.83L105.12 83.20L89.74 83.20L110.51 36.70ZM113.49 63.30L126.63 63.30L120.06 47.61L113.49 63.30ZM155.65 83.20L155.65 36.70L170.09 36.70L170.09 83.20L155.65 83.20Z" fill="var(--tk-tinta)"/></svg></h1>
       <div class="top-acc">
         <button class="scan-btn icon" id="btnScan" aria-label="Escanear código de barras" title="Código de barras">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2M7 8v8M10 8v8M14 8v8M17 8v8"/></svg>
@@ -843,7 +844,7 @@ main h2::after{content:"";flex:1;min-width:28px;height:2px;background:var(--dash
       <button class="tab" role="tab" data-tab="despensa" aria-selected="true"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 3h8M9 3v3M15 3v3M7 6h10a1 1 0 0 1 1 1v1.5c0 .6-.3 1-.6 1.4-.3.4-.4.8-.4 1.3V19a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2v-7.8c0-.5-.1-.9-.4-1.3-.3-.4-.6-.8-.6-1.4V7a1 1 0 0 1 1-1z"/><path d="M9.5 14h5"/></svg><span>Despensa</span></button>
       <button class="tab" role="tab" data-tab="lista" aria-selected="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6l1.5 1.5L8 5M4 12l1.5 1.5L8 11M4 18l1.5 1.5L8 17M11 6.5h9M11 12.5h9M11 18.5h6"/></svg><span>Lista<span class="badge" id="badge" hidden>0</span></span></button>
       <button class="tab" role="tab" data-tab="cocinar" aria-selected="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 11h16v3a6 6 0 0 1-6 6h-4a6 6 0 0 1-6-6v-3zM2 11h2M20 11h2M9 7c0-1 1-1.5 1-2.5M13 7c0-1 1-1.5 1-2.5"/></svg><span>Recetas</span></button>
-      <button class="tab" role="tab" data-tab="gastos" aria-selected="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 7h12a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h10v3"/><circle cx="15.5" cy="13.5" r="1.3"/></svg><span>Gastos</span></button>
+      <button class="tab" role="tab" data-tab="gastos" aria-selected="false" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 7h12a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h10v3"/><circle cx="15.5" cy="13.5" r="1.3"/></svg><span>Gastos</span></button>
       <button class="tab" role="tab" data-tab="mas" aria-selected="false"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="3.5"/><path d="M5 20c.8-3.5 3.6-5.5 7-5.5s6.2 2 7 5.5"/></svg><span>Más</span></button>
     </div>
   </nav>
@@ -1531,7 +1532,7 @@ function entrarCasa(id) {
   casaId = id; items = []; movs = []; compras = []; config = {}; miembros = []; cargado = false; antesSuper = undefined;
   guardarCasaLocal(user.uid, id);
   const tabUrl = new URLSearchParams(location.search).get("tab");
-  pantalla("app"); tab = ["lista", "cocinar", "gastos", "mas"].includes(tabUrl) ? tabUrl : "despensa"; render();
+  pantalla("app"); tab = ["lista", "cocinar", "mas"].includes(tabUrl) ? tabUrl : "despensa"; render();
   if (tabUrl) history.replaceState(null, "", location.pathname);
   renderCuenta();
   registrarVisita();
@@ -1685,7 +1686,7 @@ function render() {
   for (const t of document.querySelectorAll(".tab")) t.setAttribute("aria-selected", t.dataset.tab === tab);
   for (const v of ["despensa", "lista", "cocinar", "gastos", "mas"]) $("#v-" + v).hidden = v !== tab;
   $("#fab").hidden = tab !== "despensa";
-  $("#titulo").textContent = { despensa: "Despensa", lista: "Lista súper", cocinar: "Recetas", gastos: "Gastos", mas: "Más" }[tab];
+  $("#titulo").setAttribute("aria-label", "Kai · " + { despensa: "Despensa", lista: "Lista súper", cocinar: "Recetas", gastos: "Gastos", mas: "Más" }[tab]);
   if (tab === "despensa") renderDespensa();
   if (tab === "lista") renderLista();
   if (tab === "gastos") renderGastos();
