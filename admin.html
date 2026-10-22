@@ -135,11 +135,13 @@ input.buscar{width:100%;max-width:280px;padding:8px 12px;border-radius:10px;bord
     <nav class="pest" role="tablist">
       <button class="pest-b" data-pest="stats" aria-selected="true">Estadísticas</button>
       <button class="pest-b" data-pest="pub" aria-selected="false">Publicidad</button>
+      <button class="pest-b" data-pest="rec" aria-selected="false">Recetas</button>
     </nav>
     <div id="reglasBox" hidden></div>
     <div id="clave" hidden></div>
     <div id="contenido"><div class="cargando">Cargando estadísticas…</div></div>
     <div id="publicidad" hidden></div>
+    <div id="recetas" hidden></div>
   </div>
 </div>
 
@@ -267,8 +269,8 @@ $("#btnClave").onclick = () => {
   };
 };
 // ---- ¿están publicadas las reglas de esta versión? ----
-const REGLAS_VERSION = "v6";
-const REGLAS = "rules_version = '2';\nservice cloud.firestore {\n  match /databases/{database}/documents {\n    function logueado() { return request.auth != null; }\n    function casaPath(casa) { return /databases/$(database)/documents/hogar/$(casa); }\n    function esMiembro(casa) { return logueado() && exists(/databases/$(database)/documents/hogar/$(casa)/miembros/$(request.auth.uid)); }\n    function esCreador(casa) { return logueado() && get(casaPath(casa)).data.creador == request.auth.uid; }\n    function invitacionValida(casa, codigo) {\n      let inv = get(/databases/$(database)/documents/invitaciones/$(codigo)).data;\n      return inv.casa == casa && inv.expira > request.time;\n    }\n    // Administraci\u00f3n: la app /administracion (usuario Uriel Bacher) y tu cuenta de Google.\n    function esAdmin() { return request.auth != null && request.auth.token.email in ['admin@despensa-casa.app', 'uriel.bacher@gmail.com']; }\n    function texto(d, campo, max) { return !(campo in d) || (d[campo] is string && d[campo].size() <= max); }\n    function nuevo() { return request.resource.data; }\n\n    // Versi\u00f3n de estas reglas: la app de administraci\u00f3n la consulta para saber si est\u00e1n publicadas.\n    match /reglas/{version} { allow get: if version == 'v6'; }\n    match /admin/{doc} { allow read: if esAdmin(); }\n\n    match /usuarios/{uid} {\n      allow list: if esAdmin();\n      allow get: if esAdmin() || (logueado() && request.auth.uid == uid);\n      allow delete: if logueado() && request.auth.uid == uid;\n      allow create, update: if logueado() && request.auth.uid == uid\n        && texto(nuevo(), 'nombre', 60) && texto(nuevo(), 'apellido', 60)\n        && texto(nuevo(), 'provincia', 60) && texto(nuevo(), 'barrio', 80)\n        && (!('dni' in nuevo()) || nuevo().dni.matches('^[0-9]{7,8}$'));\n    }\n\n    match /dnis/{hash} {\n      allow create: if logueado() && nuevo().uid == request.auth.uid && nuevo().keys().hasOnly(['uid', 'ts']);\n      allow update: if logueado() && resource.data.uid == request.auth.uid && nuevo().uid == request.auth.uid;\n      allow delete: if logueado() && resource.data.uid == request.auth.uid;\n    }\n\n    match /anuncios/{id} {\n      allow read: if logueado();\n      allow create, update, delete: if esAdmin();\n      allow update: if logueado() && nuevo().diff(resource.data).affectedKeys().hasOnly(['vistas']) && nuevo().vistas == resource.data.get('vistas', 0) + 1;\n      allow update: if logueado() && nuevo().diff(resource.data).affectedKeys().hasOnly(['clicks']) && nuevo().clicks == resource.data.get('clicks', 0) + 1;\n    }\n\n    match /productos/{clave} {\n      allow read: if logueado();\n      allow create: if logueado() && nuevo().keys().hasOnly(['nombre', 'norm', 'claves', 'categoria', 'unidad', 'usos', 'por', 'ts'])\n        && nuevo().nombre is string && nuevo().nombre.size() > 0 && nuevo().nombre.size() <= 120\n        && nuevo().claves is list && nuevo().claves.size() <= 60 && nuevo().usos == 1 && nuevo().por == request.auth.uid;\n      allow update: if logueado() && nuevo().diff(resource.data).affectedKeys().hasOnly(['usos', 'ts']) && nuevo().usos == resource.data.usos + 1;\n    }\n\n    match /catalogo/{codigo} {\n      allow get: if logueado();\n      allow create, update: if logueado() && nuevo().nombre is string && nuevo().nombre.size() > 0 && nuevo().nombre.size() <= 120\n        && nuevo().por == request.auth.uid && nuevo().keys().hasOnly(['nombre', 'categoria', 'unidad', 'por', 'ts']);\n    }\n\n    match /invitaciones/{codigo} {\n      allow get: if logueado();\n      allow create: if esMiembro(nuevo().casa) && nuevo().por == request.auth.uid;\n      allow update: if esMiembro(resource.data.casa) && nuevo().casa == resource.data.casa;\n      allow delete: if resource == null || esMiembro(resource.data.casa);\n    }\n\n    match /{ruta=**}/items/{id} { allow read: if esAdmin(); }\n    match /{ruta=**}/compras/{id} { allow read: if esAdmin(); }\n\n    match /hogar/{casa} {\n      allow list: if esAdmin();\n      allow get: if esAdmin() || esMiembro(casa);\n      allow create: if logueado() && nuevo().creador == request.auth.uid;\n      allow update: if esMiembro(casa) && nuevo().creador == resource.data.creador;\n      allow delete: if esCreador(casa);\n      match /miembros/{uid} {\n        allow read: if esMiembro(casa);\n        allow create: if logueado() && uid == request.auth.uid && (getAfter(casaPath(casa)).data.creador == request.auth.uid\n          || (nuevo().codigo is string && invitacionValida(casa, nuevo().codigo)));\n        allow update: if logueado() && uid == request.auth.uid;\n        allow delete: if logueado() && (uid == request.auth.uid || esCreador(casa));\n      }\n      match /{coleccion}/{documento=**} {\n        allow read, write: if coleccion != 'miembros' && esMiembro(casa);\n      }\n    }\n  }\n}\n";
+const REGLAS_VERSION = "v7";
+const REGLAS = "rules_version = '2';\nservice cloud.firestore {\n  match /databases/{database}/documents {\n    function logueado() { return request.auth != null; }\n    function casaPath(casa) { return /databases/$(database)/documents/hogar/$(casa); }\n    function esMiembro(casa) { return logueado() && exists(/databases/$(database)/documents/hogar/$(casa)/miembros/$(request.auth.uid)); }\n    function esCreador(casa) { return logueado() && get(casaPath(casa)).data.creador == request.auth.uid; }\n    function invitacionValida(casa, codigo) {\n      let inv = get(/databases/$(database)/documents/invitaciones/$(codigo)).data;\n      return inv.casa == casa && inv.expira > request.time;\n    }\n    // Administraci\u00f3n: la app /administracion (usuario Uriel Bacher) y tu cuenta de Google.\n    function esAdmin() { return request.auth != null && request.auth.token.email in ['admin@despensa-casa.app', 'uriel.bacher@gmail.com']; }\n    function texto(d, campo, max) { return !(campo in d) || (d[campo] is string && d[campo].size() <= max); }\n    function nuevo() { return request.resource.data; }\n\n    // Versi\u00f3n de estas reglas: la app de administraci\u00f3n la consulta para saber si est\u00e1n publicadas.\n    match /reglas/{version} { allow get: if version == 'v7'; }\n    match /admin/{doc} { allow read: if esAdmin(); }\n\n    match /usuarios/{uid} {\n      allow list: if esAdmin();\n      allow get: if esAdmin() || (logueado() && request.auth.uid == uid);\n      allow delete: if logueado() && request.auth.uid == uid;\n      allow create, update: if logueado() && request.auth.uid == uid\n        && texto(nuevo(), 'nombre', 60) && texto(nuevo(), 'apellido', 60)\n        && texto(nuevo(), 'provincia', 60) && texto(nuevo(), 'barrio', 80)\n        && (!('dni' in nuevo()) || nuevo().dni.matches('^[0-9]{7,8}$'));\n    }\n\n    match /dnis/{hash} {\n      allow create: if logueado() && nuevo().uid == request.auth.uid && nuevo().keys().hasOnly(['uid', 'ts']);\n      allow update: if logueado() && resource.data.uid == request.auth.uid && nuevo().uid == request.auth.uid;\n      allow delete: if logueado() && resource.data.uid == request.auth.uid;\n    }\n\n    match /anuncios/{id} {\n      allow read: if logueado();\n      allow create, update, delete: if esAdmin();\n      allow update: if logueado() && nuevo().diff(resource.data).affectedKeys().hasOnly(['vistas']) && nuevo().vistas == resource.data.get('vistas', 0) + 1;\n      allow update: if logueado() && nuevo().diff(resource.data).affectedKeys().hasOnly(['clicks']) && nuevo().clicks == resource.data.get('clicks', 0) + 1;\n    }\n\n    // Recetas de la comunidad: las comparte cualquier usuario, todos las leen y comentan.\n    match /recetasComunidad/{id} {\n      allow read: if logueado();\n      allow create: if logueado() && nuevo().autorUid == request.auth.uid\n        && nuevo().n is string && nuevo().n.size() >= 3 && nuevo().n.size() <= 80\n        && nuevo().ing is list && nuevo().ing.size() >= 2 && nuevo().ing.size() <= 40\n        && nuevo().pasos is list && nuevo().pasos.size() >= 1 && nuevo().pasos.size() <= 30\n        && texto(nuevo(), 'autor', 60) && texto(nuevo(), 'foto', 450000)\n        && nuevo().comentarios == 0 && nuevo().hechas == 0;\n      allow update: if logueado() && resource.data.autorUid == request.auth.uid && nuevo().autorUid == request.auth.uid\n        && nuevo().comentarios == resource.data.comentarios && nuevo().hechas == resource.data.hechas;\n      allow update: if logueado() && nuevo().diff(resource.data).affectedKeys().hasOnly(['comentarios', 'hechas'])\n        && nuevo().get('comentarios', 0) - resource.data.get('comentarios', 0) in [-1, 0, 1]\n        && nuevo().get('hechas', 0) - resource.data.get('hechas', 0) in [0, 1];\n      allow update: if esAdmin();\n      allow delete: if (logueado() && resource.data.autorUid == request.auth.uid) || esAdmin();\n      match /comentarios/{c} {\n        allow read: if logueado();\n        allow create: if logueado() && nuevo().autorUid == request.auth.uid\n          && nuevo().texto is string && nuevo().texto.size() >= 1 && nuevo().texto.size() <= 500\n          && texto(nuevo(), 'autor', 60);\n        allow delete: if (logueado() && resource.data.autorUid == request.auth.uid) || esAdmin();\n      }\n    }\n\n    match /productos/{clave} {\n      allow read: if logueado();\n      allow create: if logueado() && nuevo().keys().hasOnly(['nombre', 'norm', 'claves', 'categoria', 'unidad', 'usos', 'por', 'ts'])\n        && nuevo().nombre is string && nuevo().nombre.size() > 0 && nuevo().nombre.size() <= 120\n        && nuevo().claves is list && nuevo().claves.size() <= 60 && nuevo().usos == 1 && nuevo().por == request.auth.uid;\n      allow update: if logueado() && nuevo().diff(resource.data).affectedKeys().hasOnly(['usos', 'ts']) && nuevo().usos == resource.data.usos + 1;\n    }\n\n    match /catalogo/{codigo} {\n      allow get: if logueado();\n      allow create, update: if logueado() && nuevo().nombre is string && nuevo().nombre.size() > 0 && nuevo().nombre.size() <= 120\n        && nuevo().por == request.auth.uid && nuevo().keys().hasOnly(['nombre', 'categoria', 'unidad', 'por', 'ts']);\n    }\n\n    match /invitaciones/{codigo} {\n      allow get: if logueado();\n      allow create: if esMiembro(nuevo().casa) && nuevo().por == request.auth.uid;\n      allow update: if esMiembro(resource.data.casa) && nuevo().casa == resource.data.casa;\n      allow delete: if resource == null || esMiembro(resource.data.casa);\n    }\n\n    match /{ruta=**}/items/{id} { allow read: if esAdmin(); }\n    match /{ruta=**}/compras/{id} { allow read: if esAdmin(); }\n\n    match /hogar/{casa} {\n      allow list: if esAdmin();\n      allow get: if esAdmin() || esMiembro(casa);\n      allow create: if logueado() && nuevo().creador == request.auth.uid;\n      allow update: if esMiembro(casa) && nuevo().creador == resource.data.creador;\n      allow delete: if esCreador(casa);\n      match /miembros/{uid} {\n        allow read: if esMiembro(casa);\n        allow create: if logueado() && uid == request.auth.uid && (getAfter(casaPath(casa)).data.creador == request.auth.uid\n          || (nuevo().codigo is string && invitacionValida(casa, nuevo().codigo)));\n        allow update: if logueado() && uid == request.auth.uid;\n        allow delete: if logueado() && (uid == request.auth.uid || esCreador(casa));\n      }\n      match /{coleccion}/{documento=**} {\n        allow read, write: if coleccion != 'miembros' && esMiembro(casa);\n      }\n    }\n  }\n}\n";
 async function reglasAlDia() {
   try { await rest("/reglas/" + REGLAS_VERSION); return true; }
   catch (e) { if (e.http === 404 && !/does not exist/i.test(e.message)) return true; if (e.http === 403) return false; throw e; }
@@ -483,10 +485,11 @@ document.addEventListener("click", async e => {
   const p = e.target.closest("[data-pest]");
   if (p) {
     for (const b of document.querySelectorAll("[data-pest]")) b.setAttribute("aria-selected", b === p);
-    const pub = p.dataset.pest === "pub";
-    $("#contenido").hidden = pub; $("#publicidad").hidden = !pub;
-    $("#btnCsv").hidden = pub;
-    if (pub && !ANUNCIOS.length) cargarPublicidad();
+    const k = p.dataset.pest;
+    $("#contenido").hidden = k !== "stats"; $("#publicidad").hidden = k !== "pub"; $("#recetas").hidden = k !== "rec";
+    $("#btnCsv").hidden = k !== "stats";
+    if (k === "pub" && !ANUNCIOS.length) cargarPublicidad();
+    if (k === "rec") cargarRecetas();
     return;
   }
   const ed = e.target.closest("[data-editar]"); if (ed) { abrirForm(ANUNCIOS.find(a => a.id === ed.dataset.editar)); return; }
@@ -495,7 +498,79 @@ document.addEventListener("click", async e => {
   const bo = e.target.closest("[data-borrar]");
   if (bo) { const a = ANUNCIOS.find(x => x.id === bo.dataset.borrar); if (!confirm(`¿Borrar el anuncio «${a.titulo || a.anunciante || "sin título"}»? Se pierden sus estadísticas.`)) return; try { await borrarAnuncio(a.id); } catch (er) { alert("No se pudo borrar: " + er.message); } await cargarPublicidad(); }
 });
-$("#btnRecargar").addEventListener("click", () => { if (!$("#publicidad").hidden) cargarPublicidad(); });
+$("#btnRecargar").addEventListener("click", () => { if (!$("#publicidad").hidden) cargarPublicidad(); if (!$("#recetas").hidden) cargarRecetas(); });
+
+// ---------------- RECETAS DE LA COMUNIDAD (moderación) ----------------
+let RECS = [];
+async function consulta(padre, col, orden, dir = "DESCENDING") {
+  const j = await rest(`${padre}:runQuery`, { method: "POST", body: JSON.stringify({ structuredQuery: { from: [{ collectionId: col }], orderBy: [{ field: { fieldPath: orden }, direction: dir }], limit: 500 } }) });
+  return (Array.isArray(j) ? j : []).filter(x => x.document).map(x => ({ id: x.document.name.split("/").pop(), ...obj(x.document.fields) }));
+}
+async function cargarRecetas() {
+  $("#recetas").innerHTML = `<div class="cargando">Cargando recetas…</div>`;
+  try { RECS = await consulta("", "recetasComunidad", "creado"); }
+  catch (e) { $("#recetas").innerHTML = `<div class="cargando">No se pudieron leer las recetas (${esc(e.message)}).<br>¿Publicaste las reglas nuevas?</div>`; return; }
+  const tc = RECS.reduce((s, r) => s + (r.comentarios || 0), 0), th = RECS.reduce((s, r) => s + (r.hechas || 0), 0);
+  const autores = new Set(RECS.map(r => r.autorUid)).size;
+  $("#recetas").innerHTML = `
+    <div class="kpis" style="margin-top:12px">
+      <div class="kpi"><small>Recetas compartidas</small><b>${n0(RECS.length)}</b><span>por ${n0(autores)} persona${autores === 1 ? "" : "s"}</span></div>
+      <div class="kpi"><small>Comentarios</small><b>${n0(tc)}</b><span>en todas las recetas</span></div>
+      <div class="kpi"><small>Veces que las hicieron</small><b>${n0(th)}</b><span>tocaron «La hice»</span></div>
+    </div>
+    <p class="nota">Revisá lo que comparten los usuarios. Si algo no corresponde (publicidad, datos personales, insultos), borralo.</p>
+    <div class="panel tabla">${RECS.length ? `<table>
+      <thead><tr><th></th><th>Receta</th><th>Compartida por</th><th>Fecha</th><th class="n">💬</th><th class="n">La hicieron</th><th></th></tr></thead>
+      <tbody>${RECS.map(r => `<tr>
+        <td>${r.foto ? `<img class="mini" src="${esc(r.foto)}" alt="">` : ""}</td>
+        <td><b>${esc(r.n)}</b><br><span class="sub">${(r.ing || []).length} ingredientes · ${r.t || "?"} min</span></td>
+        <td>${esc(r.autor || "—")}${r.barrio ? `<br><span class="sub">${esc(r.barrio)}</span>` : ""}</td>
+        <td>${r.creado ? new Date(ms(r.creado)).toLocaleDateString("es-AR") : "—"}</td>
+        <td class="n">${n0(r.comentarios)}</td><td class="n">${n0(r.hechas)}</td>
+        <td><button class="lnk" data-verrec="${r.id}">Ver</button><button class="lnk mal" data-borrarrec="${r.id}">Borrar</button></td>
+      </tr><tr id="det-${r.id}" hidden><td colspan="7"></td></tr>`).join("")}</tbody></table>` : `<div class="cargando">Todavía nadie compartió recetas.</div>`}</div>`;
+}
+async function verReceta(id) {
+  const fila = $("#det-" + id), r = RECS.find(x => x.id === id);
+  if (!fila.hidden) { fila.hidden = true; return; }
+  fila.hidden = false; const td = fila.firstElementChild;
+  td.innerHTML = `<div class="cargando">Cargando…</div>`;
+  let cs = [];
+  try { cs = await consulta(`/recetasComunidad/${id}`, "comentarios", "ts", "ASCENDING"); } catch (e) { cs = null; }
+  td.innerHTML = `<div style="display:grid;gap:10px;padding:6px 0">
+    ${r.foto ? `<img src="${esc(r.foto)}" alt="" style="max-width:260px;border-radius:12px">` : ""}
+    <div><b>Ingredientes:</b> ${(r.ing || []).map(i => esc(`${i.nombre} (${i.texto})`)).join(", ")}</div>
+    <div><b>Pasos:</b><ol style="margin:4px 0 0">${(r.pasos || []).map(p => `<li>${esc(p)}</li>`).join("")}</ol></div>
+    <div><b>Comentarios:</b>${cs === null ? " no se pudieron leer" : cs.length ? `<ul style="margin:4px 0 0;padding-left:18px">${cs.map(c => `<li><b>${esc(c.autor || "—")}</b>${c.hizo ? " (la hizo)" : ""}: ${esc(c.texto)} <button class="lnk mal" data-borrarcm="${id}|${c.id}">Borrar</button></li>`).join("")}</ul>` : " ninguno"}</div>
+  </div>`;
+}
+document.addEventListener("click", async e => {
+  const v = e.target.closest("[data-verrec]"); if (v) { verReceta(v.dataset.verrec); return; }
+  const b = e.target.closest("[data-borrarrec]");
+  if (b) {
+    const r = RECS.find(x => x.id === b.dataset.borrarrec);
+    if (!confirm(`¿Borrar la receta «${r.n}» de ${r.autor || "un usuario"}? Se borra para todos, con sus comentarios.`)) return;
+    b.disabled = true;
+    try {
+      const cs = await consulta(`/recetasComunidad/${r.id}`, "comentarios", "ts").catch(() => []);
+      for (const c of cs) await rest(`/recetasComunidad/${r.id}/comentarios/${c.id}`, { method: "DELETE" }).catch(() => {});
+      await rest(`/recetasComunidad/${r.id}`, { method: "DELETE" });
+    } catch (er) { alert("No se pudo borrar: " + er.message); }
+    cargarRecetas(); return;
+  }
+  const c = e.target.closest("[data-borrarcm]");
+  if (c) {
+    const [rid, cid] = c.dataset.borrarcm.split("|"), r = RECS.find(x => x.id === rid);
+    if (!confirm("¿Borrar este comentario?")) return;
+    try {
+      await rest(`/recetasComunidad/${rid}/comentarios/${cid}`, { method: "DELETE" });
+      r.comentarios = Math.max(0, (r.comentarios || 1) - 1);
+      await guardarCampos(`/recetasComunidad/${rid}`, { comentarios: r.comentarios }).catch(() => {});
+      $("#det-" + rid).hidden = true; verReceta(rid);
+    } catch (er) { alert("No se pudo borrar: " + er.message); }
+  }
+});
+const guardarCampos = (path, campos) => rest(`${path}?${Object.keys(campos).map(k => "updateMask.fieldPaths=" + k).join("&")}`, { method: "PATCH", body: JSON.stringify({ fields: fsCampos(campos) }) });
 
 let datos = null, ordenBarrios = { col: "usuarios", desc: true }, filtroBarrio = "";
 
