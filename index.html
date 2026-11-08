@@ -245,6 +245,26 @@ main{padding-block:12px calc(96px + env(safe-area-inset-bottom,0px))}
 .cm-form textarea{width:100%;padding:10px 12px;border-radius:12px;border:1px solid var(--line);background:var(--bg);color:var(--ink);font:inherit;resize:vertical}
 .btn.wa{background:#25d366;color:#0b2e17;display:flex;align-items:center;justify-content:center;gap:8px;margin:4px 0 2px}
 .atajos-ayuda{display:grid;gap:8px}.atajos-ayuda details{border-radius:12px;background:var(--bg);padding:10px 12px}.atajos-ayuda summary{cursor:pointer}.atajos-ayuda p,.atajos-ayuda ol{margin:8px 0 0;font-size:.92rem}.atajos-ayuda ol{padding-left:20px;display:grid;gap:4px}
+.tri{display:flex;gap:3px;background:var(--bg);border-radius:999px;padding:3px;flex:none}
+.tri button{border:0;background:none;border-radius:999px;padding:8px 10px;font:600 .8rem var(--f-body,inherit);color:var(--muted);min-width:44px}
+.tri button[aria-pressed="true"]{background:var(--prof);color:var(--prof-ink)}
+.tri button[data-est="bajo"][aria-pressed="true"]{background:var(--mostaza);color:#23271d}
+.tri button[data-est="agotado"][aria-pressed="true"]{background:var(--tomate-texto,#b8431f);color:#fbfcf6}
+.repaso-cta{background:var(--prof);color:var(--prof-ink)}.repaso-cta span:last-child{font-weight:700}
+.repaso{display:grid;gap:14px;overflow:hidden}
+.repaso-top{display:flex;align-items:center;gap:10px}.repaso-top b{font:800 .9rem var(--f-kai);text-transform:uppercase;letter-spacing:.04em}
+.repaso-top span{margin-left:auto;color:var(--muted);font-size:.85rem}.repaso-top .x{margin-left:0}
+.repaso-barra{height:6px;border-radius:3px;background:var(--line);overflow:hidden}.repaso-barra i{display:block;height:100%;background:var(--mostaza);transition:width .25s}
+.carta{background:var(--papel);border-radius:20px;padding:30px 20px 22px;display:grid;gap:8px;justify-items:center;text-align:center;box-shadow:0 0 0 1px var(--line);touch-action:pan-y;user-select:none;transition:transform .2s;position:relative;min-height:190px;align-content:center}
+.carta[data-dir="si"]{box-shadow:0 0 0 3px var(--prof)}.carta[data-dir="no"]{box-shadow:0 0 0 3px var(--tomate-texto,#b8431f)}
+.carta-cat{font-size:.75rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.carta-nom{font:400 2rem/1.1 var(--f-display);text-wrap:balance}
+.carta-por{color:var(--muted);font-size:.92rem}.carta-pista{margin-top:8px;font-size:.75rem;color:var(--muted);opacity:.8}
+.repaso-btns{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
+.repaso-btns button{border:0;border-radius:16px;padding:16px 6px;font:700 .95rem inherit;cursor:pointer}
+.r-no{background:var(--tomate-texto,#b8431f);color:#fbfcf6}.r-poco{background:var(--mostaza);color:#23271d}.r-si{background:var(--prof);color:var(--prof-ink)}
+.repaso-fin{display:grid;gap:8px;text-align:center;padding:16px 0}.repaso-fin b{font:800 1.6rem var(--f-kai)}.repaso-fin p{margin:0}
+.ajustes-kai{display:grid;gap:12px}.sw{display:flex;gap:10px;align-items:flex-start}.sw input{margin-top:4px;accent-color:var(--prof)}.sw span{display:grid;gap:2px}.sw small{color:var(--muted)}
 .cm-form label{display:flex;gap:6px;align-items:center;font-size:.88rem}
 .rec-lista{display:grid;gap:1px;background:var(--line);border-radius:12px;overflow:hidden}
 .rec-fila{display:flex;gap:10px;align-items:center;background:var(--surface);padding:10px 12px}
@@ -773,7 +793,16 @@ main h2::after{content:"";flex:1;min-width:28px;height:2px;background:var(--dash
         <p><b>Sos administrador.</b> Mirá cuántos usuarios hay, de qué barrios y cuánto usan la app.</p>
         <a class="btn" href="admin.html" target="_blank" rel="noopener">Abrir panel de administración</a>
       </div>
-      <h2 style="margin-top:6px">Cargar sin abrir la app</h2>
+      <h2 style="margin-top:6px">Cómo anotar lo que hay</h2>
+      <div class="panel ajustes-kai">
+        <div class="chips wrapchips" role="group" aria-label="Cómo anotar">
+          <button class="chip" type="button" data-anotar="simple">Simple: Hay · Poco · No hay</button>
+          <button class="chip" type="button" data-anotar="exacto">Con cantidades</button>
+        </div>
+        <label class="sw"><input type="checkbox" id="chkAuto"> <span><b>Kai calcula solo lo que se va gastando</b><small>Aprende cada cuánto compran cada cosa y la va bajando sola. Si se equivoca, corregilo y aprende.</small></span></label>
+        <button class="btn ghost" type="button" data-repaso>Hacer el repaso ahora (30 segundos)</button>
+      </div>
+      <h2>Cargar sin abrir la app</h2>
       <div class="panel atajos-ayuda">
         <details>
           <summary><b>Android</b> · compartir y atajos del ícono</summary>
@@ -913,6 +942,13 @@ main h2::after{content:"";flex:1;min-width:28px;height:2px;background:var(--dash
 </dialog>
 
 <!-- Voz -->
+<dialog id="dlgRepaso" class="repaso-dlg">
+  <div class="sheet repaso">
+    <div class="repaso-top"><b>Repaso de la semana</b><span id="repasoPaso"></span><button class="x" type="button" id="repasoCerrar" aria-label="Cerrar">×</button></div>
+    <div class="repaso-barra"><i id="repasoBarra"></i></div>
+    <div id="repasoCarta"></div>
+  </div>
+</dialog>
 <dialog id="dlgAtajo">
   <div class="sheet" style="text-align:center">
     <h3 id="atajoTit">Escanear el ticket</h3>
@@ -1152,25 +1188,48 @@ let tab = "despensa", cat = "Todas", busca = "", subs = [], editId = null, confi
 let tasas = new Map();
 
 /* ---------- reglas de negocio ---------- */
-const estado = it => { const q = num(it.cantidad), m = num(it.minimo); return q <= 0 ? "agotado" : q <= m ? "bajo" : "ok"; };
+// Kai va bajando solo lo que se gasta: cantidad anotada − ritmo de la casa × días desde la última vez que alguien la tocó
+const autoOn = () => config.autoConsumo !== false;
+const tasaDe = it => (tasas.get(it.id) || 0) * Math.min(3, Math.max(.3, num(it.ritmo) || 1));
+function cantVista(it) {
+  const q = num(it.cantidad), t = tasaDe(it);
+  if (!autoOn() || !t || it.auto === false || q <= 0 || !it.actualizado) return q;
+  const dias = Math.max(0, (Date.now() - ms(it.actualizado)) / DIA - .5);   // medio día de gracia
+  return Math.max(0, +(q - t * dias).toFixed(2));
+}
+const estimado = it => cantVista(it) < num(it.cantidad) - .001;
+const estado = it => { const q = cantVista(it), m = num(it.minimo); return q <= 0 ? "agotado" : q <= m ? "bajo" : "ok"; };
 const enLista = it => estado(it) !== "ok" || it.enLista === true;
-const aComprar = it => it.cantCompra != null ? num(it.cantCompra) : Math.max(num(it.objetivo) - num(it.cantidad), num(it.paso) || 1);
-const motivo = it => { const s = estado(it); return s === "agotado" ? "No queda" : s === "bajo" ? `Quedan ${fmt(it.cantidad)} ${esc(it.unidad)}` : "Agregado a mano"; };
+const aComprar = it => it.cantCompra != null ? num(it.cantCompra) : Math.max(num(it.objetivo) - cantVista(it), num(it.paso) || 1);
+const motivo = it => { const s = estado(it), e = estimado(it); return s === "agotado" ? (e ? "Kai calcula que se terminó" : "No queda") : s === "bajo" ? `${e ? "Quedarían ~" : "Quedan "}${fmt(cantVista(it))} ${esc(it.unidad)}` : "Agregado a mano"; };
 
-// consumo diario promedio a partir del historial (últimos 90 días)
+// ritmo de cada producto (cuánto se gasta por día), con dos fuentes de los últimos 90 días:
+// lo que se fue usando (−, recetas, voz) y cada cuánto se vuelve a comprar
 function calcTasas() {
   tasas = new Map();
   const por = new Map();
-  for (const m of movs) if (m.tipo === "consumo") { (por.get(m.itemId) || por.set(m.itemId, []).get(m.itemId)).push(m); }
-  for (const [id, lista] of por) {
-    if (lista.length < 2) continue;
-    const total = lista.reduce((s, m) => s + Math.abs(num(m.delta)), 0);
-    const primero = Math.min(...lista.map(m => ms(m.ts)));
-    const dias = Math.min(90, Math.max(7, (Date.now() - primero) / DIA));
-    tasas.set(id, total / dias);
+  for (const m of movs) {
+    if (!m.itemId || m.itemId === "-") continue;
+    const p = por.get(m.itemId) || por.set(m.itemId, { cons: [], comp: [] }).get(m.itemId);
+    if (m.tipo === "consumo") p.cons.push(m);
+    else if ((m.tipo === "compra" || m.tipo === "suma") && num(m.delta) > 0) p.comp.push({ t: ms(m.ts), q: num(m.delta) });
+  }
+  for (const [id, p] of por) {
+    const r = [];
+    if (p.cons.length >= 2) {
+      const total = p.cons.reduce((s, m) => s + Math.abs(num(m.delta)), 0);
+      const primero = Math.min(...p.cons.map(m => ms(m.ts)));
+      r.push(total / Math.min(90, Math.max(7, (Date.now() - primero) / DIA)));
+    }
+    const c = p.comp.sort((x, y) => x.t - y.t);
+    if (c.length >= 2) {
+      const dias = (c[c.length - 1].t - c[0].t) / DIA;
+      if (dias >= 2) r.push(c.slice(0, -1).reduce((s, x) => s + x.q, 0) / dias);   // lo comprado se gastó hasta la última compra
+    }
+    if (r.length) tasas.set(id, r.reduce((s, x) => s + x, 0) / r.length);
   }
 }
-const diasRestan = it => { const t = tasas.get(it.id); return t ? num(it.cantidad) / t : null; };
+const diasRestan = it => { const t = tasaDe(it); return t ? cantVista(it) / t : null; };
 
 /* ---------- cuentas ---------- */
 const MSG_AUTH = {
@@ -1561,8 +1620,9 @@ function entrarCasa(id) {
   casaId = id; items = []; movs = []; compras = []; config = {}; miembros = []; cargado = false; antesSuper = undefined;
   guardarCasaLocal(user.uid, id);
   const tabUrl = new URLSearchParams(location.search).get("tab");
+  const vaRepaso = tabUrl === "repaso";
   pantalla("app"); tab = ["lista", "cocinar", "mas"].includes(tabUrl) ? tabUrl : "despensa"; render();
-  if (tabUrl) history.replaceState(null, "", location.pathname);
+  if (tabUrl && !vaRepaso) history.replaceState(null, "", location.pathname);
   atajosDeEntrada();
   renderCuenta();
   registrarVisita();
@@ -1719,6 +1779,7 @@ function render() {
   $("#titulo").setAttribute("aria-label", "Kai · " + { despensa: "Despensa", lista: "Lista súper", cocinar: "Recetas", gastos: "Gastos", mas: "Más" }[tab]);
   if (tab === "despensa") renderDespensa();
   if (tab === "lista") renderLista();
+  if (tab === "mas") pintarAjustesKai();
   if (tab === "gastos") renderGastos();
   if (tab === "cocinar") renderCocinar();
   if (tab === "mas") { pintarAvisos(); renderLogros(); }
@@ -1750,11 +1811,14 @@ function renderDespensa() {
   }).join("");
 }
 
+const simple = () => config.anotar !== "exacto";
 function rowStock(it) {
   const s = estado(it), dr = diasRestan(it);
-  const dura = dr != null ? (dr < 1 ? "se acaba hoy" : `alcanza ~${Math.round(dr)} día${Math.round(dr) === 1 ? "" : "s"}`) : `aviso con ${fmt(it.minimo)} ${esc(it.unidad)}`;
+  const dura = s === "agotado" ? (estimado(it) ? "Kai calcula que se terminó" : "no queda") : dr != null ? (dr < 1 ? (estimado(it) ? "Kai calcula que se terminó" : "se acaba hoy") : `alcanza ~${Math.round(dr)} día${Math.round(dr) === 1 ? "" : "s"}`)
+    : simple() ? `${fmt(it.cantidad)} ${esc(it.unidad)}` : `aviso con ${fmt(it.minimo)} ${esc(it.unidad)}`;
   let pill = "";
-  if (s === "agotado") pill = `<span class="pill agotado">Agotado</span>`;
+  if (simple() && s !== "ok") pill = "";   // en modo simple el estado ya se ve en los botones
+  else if (s === "agotado") pill = `<span class="pill agotado">Agotado</span>`;
   else if (s === "bajo") pill = `<span class="pill bajo">Queda poco</span>`;
   else if (dr != null && dr <= 4) pill = `<span class="pill pronto">Se acaba en ~${Math.max(1, Math.round(dr))} días</span>`;
   const dv = num(it.cantidad) > 0 ? diasVence(it) : null;
@@ -1765,11 +1829,15 @@ function rowStock(it) {
       <span class="row-meta">${esc(it.ubicacion || "")} · ${dura}</span>
       ${pill ? `<span class="pills">${pill}</span>` : ""}
     </button>
-    <div class="step">
+    ${simple() ? `<div class="tri" role="group" aria-label="¿Cuánto hay de ${esc(it.nombre)}?">
+      <button data-est="ok" data-id="${it.id}" aria-pressed="${s === "ok"}">Hay</button>
+      <button data-est="bajo" data-id="${it.id}" aria-pressed="${s === "bajo"}">Poco</button>
+      <button data-est="agotado" data-id="${it.id}" aria-pressed="${s === "agotado"}">No hay</button>
+    </div>` : `<div class="step">
       <button data-dec="${it.id}" aria-label="Restar ${esc(it.nombre)}">−</button>
-      <output>${fmt(it.cantidad)}<small>${esc(it.unidad)}</small></output>
+      <output>${estimado(it) ? "≈" : ""}${fmt(cantVista(it))}<small>${esc(it.unidad)}</small></output>
       <button data-inc="${it.id}" aria-label="Sumar ${esc(it.nombre)}">+</button>
-    </div>
+    </div>`}
   </div>`;
 }
 
@@ -2000,14 +2068,41 @@ const quien = () => user?.displayName || user?.email || "";
 const firma = () => ({ actualizado: serverTimestamp(), por: quien() });
 const logMov = (b, it, delta, tipo, extra = {}) => b.set(doc(movsCol()), { itemId: it.id, nombre: it.nombre, unidad: it.unidad || "", delta, tipo, ts: serverTimestamp(), por: quien(), ...extra });
 
+// Hay · Poco · No hay. Si contradice lo que Kai calculaba, ajusta el ritmo de ese producto
+function cantPara(it, est) {
+  const m = num(it.minimo), paso = num(it.paso) || 1;
+  if (est === "agotado") return { cantidad: 0 };
+  if (est === "bajo") return m > 0 ? { cantidad: m } : { cantidad: paso, minimo: paso };
+  const q = num(it.cantidad), obj = num(it.objetivo);
+  return { cantidad: estado(it) === "ok" ? cantVista(it) : Math.max(obj > m ? obj : 0, m + paso, q > m ? q : 0, paso) };
+}
+function aprender(it, est, b) {
+  if (!tasas.get(it.id) || !estimado(it)) return;
+  const calc = estado(it), orden = { ok: 2, bajo: 1, agotado: 0 }, dif = orden[est] - orden[calc];
+  if (!dif) return;
+  const r = Math.min(3, Math.max(.3, (num(it.ritmo) || 1) * (dif > 0 ? .75 : 1.3)));   // queda más de lo calculado → gastan más lento
+  b.update(ref(it.id), { ritmo: +r.toFixed(2) });
+}
+async function ponerEstado(id, est, b0 = null) {
+  const it = items.find(i => i.id === id); if (!it) return;
+  if (!b0 && estado(it) === est && !estimado(it)) return;
+  const b = b0 || writeBatch(db), q = cantVista(it), datos = cantPara(it, est), delta = +(datos.cantidad - q).toFixed(3);
+  b.update(ref(id), { ...datos, ...firma(), ...(est !== "ok" ? {} : { enLista: false }) });
+  aprender(it, est, b);
+  if (delta) logMov(b, it, delta, delta < 0 ? "consumo" : "suma", { estado: est });
+  if (b0) return;
+  try { await b.commit(); } catch (e) { toast("No se pudo guardar: " + e.message); return; }
+  if (est === "agotado") toast(`${it.nombre}: pasó a la lista`);
+  else if (est === "bajo") toast(`${it.nombre}: queda poco, pasó a la lista`);
+}
 async function mover(id, signo) {
   const it = items.find(i => i.id === id); if (!it) return;
-  const paso = num(it.paso) || 1, q = num(it.cantidad);
+  const paso = num(it.paso) || 1, q = cantVista(it);
   const nuevo = Math.max(0, +(q + signo * paso).toFixed(3));
   const delta = +(nuevo - q).toFixed(3);
-  if (!delta) return;
+  if (!delta && q === num(it.cantidad)) return;
   const b = writeBatch(db);
-  b.update(ref(id), nuevo === 0 ? { cantidad: 0, ...firma() } : { cantidad: increment(delta), ...firma() });
+  b.update(ref(id), { cantidad: nuevo, ...firma() });
   logMov(b, it, delta, delta < 0 ? "consumo" : "suma");
   try { await b.commit(); } catch (e) { toast("No se pudo guardar: " + e.message); return; }
   if (signo < 0 && estado(it) === "ok" && estado({ ...it, cantidad: nuevo }) !== "ok") toast(`${it.nombre}: queda poco, pasó a la lista`);
@@ -2027,11 +2122,14 @@ document.addEventListener("click", e => {
   else if (d.cat) { cat = d.cat; renderDespensa(); }
   else if (d.inc) mover(d.inc, 1);
   else if (d.dec) mover(d.dec, -1);
+  else if (d.est && d.id) ponerEstado(d.id, d.est);
   else if (d.binc) moverCompra(d.binc, 1);
   else if (d.bdec) moverCompra(d.bdec, -1);
   else if (d.edit) abrir(d.edit);
   else if (d.alista) updateDoc(ref(d.alista), { enLista: true, ...marcaAgregado() });
   else if ("seed" in d) seed();
+  else if ("repaso" in d) abrirRepaso();
+  else if (d.recabrir) { lsSet("recAbierta:" + casaId, ""); abrirReceta(d.recabrir); }
 });
 document.addEventListener("change", e => {
   const id = e.target.dataset?.cart;
@@ -2082,7 +2180,7 @@ $("#frmCierre").addEventListener("submit", async e => {
   for (const it of carro) {
     const cant = num($("#cc-" + it.id).value), precio = num($("#cp-" + it.id).value);
     const upd = { enCarrito: false, enLista: false, cantCompra: deleteField(), carritoPor: deleteField(), agregadoPor: deleteField(), agregadoTs: deleteField(), ...firma() };
-    if (cant > 0) upd.cantidad = increment(cant);
+    if (cant > 0) upd.cantidad = +(cantVista(it) + cant).toFixed(3);
     if (precio > 0) upd.precio = precio;
     b.update(ref(it.id), upd);
     if (cant > 0) {
@@ -2195,7 +2293,7 @@ $("#dupBox").addEventListener("click", e => {
   const codigo = $("#f-codigo").value.trim();
   const precio = num($("#f-precio").value);
   const b = writeBatch(db);
-  const upd = { cantidad: increment(cant), ...firma() };
+  const upd = { cantidad: +(cantVista(it) + cant).toFixed(3), ...firma() };
   if (codigo && !it.codigo) upd.codigo = codigo;
   if (precio) upd.precio = precio;
   b.update(ref(id), upd);
@@ -2508,9 +2606,9 @@ $("#btnFotoOk").onclick = () => {
   for (const p of elegidos) {
     const it = p.destino && items.find(i => i.id === p.destino);
     if (it) {
-      const delta = signo > 0 ? p.cantidad : -Math.min(p.cantidad, num(it.cantidad));
+      const delta = signo > 0 ? p.cantidad : -Math.min(p.cantidad, cantVista(it));
       if (!delta) continue;
-      b.update(ref(it.id), { cantidad: increment(delta), ...firma() });
+      b.update(ref(it.id), { cantidad: Math.max(0, +(cantVista(it) + delta).toFixed(3)), ...firma() });
       logMov(b, it, delta, signo > 0 ? "suma" : "consumo");
       sumados++;
     } else if (signo > 0) {
@@ -2835,7 +2933,8 @@ async function guardarParaSW() {
     const r = datosResumen();
     await c.put("./__resumen", new Response(JSON.stringify({
       casa: casaId, on: puedeNotificar(), cfg: resCfg(), ult: Number(lsGet("resumen:ult:" + casaId, 0)),
-      titulo: "Tu resumen de la semana", cuerpo: textoResumen(r), guardado: Date.now()
+      titulo: candidatosRepaso().length >= 2 ? "¿Revisamos la despensa?" : "Tu resumen de la semana",
+      cuerpo: candidatosRepaso().length >= 2 ? `Son 30 segundos: ${listaNombres(candidatosRepaso(), 3)} se estarían terminando.` : textoResumen(r), guardado: Date.now()
     }), { headers: { "Content-Type": "application/json" } }));
   } catch {}
 }
@@ -2855,7 +2954,8 @@ async function chequearResumen() {
     if (ult < debido) {
       lsSet(k, String(Date.now()));
       lsSet("resumen:visto:" + casaId, String(debido));
-      notificar("Tu resumen de la semana", textoResumen(datosResumen()), "resumen", "lista");
+      if (candidatosRepaso().length >= 2) notificar("¿Revisamos la despensa?", `Son 30 segundos: ${listaNombres(candidatosRepaso(), 3)} se estarían terminando.`, "resumen", "repaso");
+      else notificar("Tu resumen de la semana", textoResumen(datosResumen()), "resumen", "lista");
       if (tab === "despensa") renderDespensa();
     }
     chequearVencimientos();
@@ -2879,6 +2979,10 @@ const resumenVisible = () => {
 // tarjetas del día a día arriba de la despensa
 function renderExtras() {
   const partes = [];
+  if (repasoDebido()) partes.push(`<button class="aviso repaso-cta" data-repaso><span><b>Repaso de la semana</b> · 30 segundos</span><span>Empezar →</span></button>`);
+  const ur = (() => { try { return JSON.parse(lsGet("recAbierta:" + casaId) || "null"); } catch { return null; } })();
+  const rUlt = ur && Date.now() - ur.t < 14 * 3600000 && new Date(ur.t).getDate() === new Date().getDate() && new Date().getHours() >= 13 ? [...RECETAS, ...RECETAS_IA, ...RECETAS_COM].find(r => r.id === ur.id) : null;
+  if (rUlt) partes.push(`<button class="aviso info" data-recabrir="${rUlt.id}"><span>¿Cocinaste ${esc(rUlt.n)}? Descontá los ingredientes</span><span>Sí →</span></button>`);
   if (resumenVisible()) {
     const r = datosResumen();
     partes.push(`<div class="semana">
@@ -2887,7 +2991,6 @@ function renderExtras() {
         <span><b class="num">${r.faltan.length}</b>faltan</span>
         <span><b class="num">${r.pronto.length}</b>se acaban</span>
         <span><b class="num">${r.vencen.length}</b>por vencer</span>
-        <span><b class="num">${corto(r.semana)}</b>gastado</span>
       </div>
       <p>${esc(textoResumen(r))}</p>
       <div class="actions" style="margin-top:0"><button class="btn sm" data-goto="lista">Ver la lista</button><button class="btn ghost sm" data-goto="cocinar">¿Qué cocino?</button></div>
@@ -3342,14 +3445,94 @@ $("#fNuevaRec").addEventListener("submit", async e => {
   b.disabled = false; b.textContent = "Publicar receta";
 });
 
+/* ---------- repaso semanal: 30 segundos, solo lo que Kai cree que se está terminando ---------- */
+const REPASO_MAX = 10;
+function candidatosRepaso() {
+  const ahora = Date.now(), pts = it => {
+    const s = estado(it), dr = diasRestan(it), quieto = (ahora - ms(it.actualizado || 0)) / DIA;
+    if (it.enCarrito) return -1;
+    if (estimado(it) && s !== "ok") return 100 - (dr ?? 0);                 // Kai calcula que se terminó o queda poco
+    if (dr != null && dr <= 7) return 60 - dr;                               // se acaba esta semana
+    if (s === "ok" && quieto > 21) return 20 + Math.min(20, quieto / 7);     // hace mucho que nadie lo mira
+    return -1;
+  };
+  return items.map(it => [it, pts(it)]).filter(x => x[1] > 0).sort((x, y) => y[1] - x[1]).slice(0, REPASO_MAX).map(x => x[0]);
+}
+const repasoDebido = () => (Date.now() - ms(config.repasoUlt || 0)) / DIA >= 6 && candidatosRepaso().length >= 2;
+let repasoCola = [], repasoK = 0, repasoRes = { ok: 0, bajo: 0, agotado: 0 };
+function abrirRepaso() {
+  repasoCola = candidatosRepaso(); repasoK = 0; repasoRes = { ok: 0, bajo: 0, agotado: 0 };
+  if (!repasoCola.length) { toast("Todo al día: no hay nada para revisar"); return; }
+  pintarRepaso();
+  if (!$("#dlgRepaso").open) $("#dlgRepaso").showModal();
+}
+function pintarRepaso() {
+  const n = repasoCola.length;
+  $("#repasoBarra").style.width = (repasoK / n * 100) + "%";
+  if (repasoK >= n) {
+    $("#repasoPaso").textContent = "";
+    const r = racha();
+    $("#repasoCarta").innerHTML = `<div class="repaso-fin"><b>¡Listo!</b>
+      <p>${repasoRes.agotado + repasoRes.bajo ? `${repasoRes.agotado + repasoRes.bajo} cosa${repasoRes.agotado + repasoRes.bajo > 1 ? "s" : ""} a la lista del súper.` : "No falta nada."} ${r ? `Racha: ${r} semana${r > 1 ? "s" : ""}.` : ""}</p>
+      <p class="hint">Con lo que respondiste, Kai ajustó cuánto les dura cada cosa.</p>
+      <div class="actions"><button class="btn" type="button" data-repasolista>Ver la lista</button><button class="btn ghost" type="button" id="repasoListo">Cerrar</button></div></div>`;
+    return;
+  }
+  const it = repasoCola[repasoK], s = estado(it), dr = diasRestan(it);
+  const porque = estimado(it) && s === "agotado" ? "Kai calcula que se terminó" : estimado(it) && s === "bajo" ? "Kai calcula que queda poco"
+    : dr != null && dr <= 7 ? `Calculamos que alcanza ~${Math.max(1, Math.round(dr))} día${Math.round(dr) > 1 ? "s" : ""}` : "Hace rato que nadie lo mira";
+  $("#repasoPaso").textContent = `${repasoK + 1} de ${n}`;
+  $("#repasoCarta").innerHTML = `<div class="carta" id="carta">
+      <span class="carta-cat">${esc(catDe(it))}</span>
+      <b class="carta-nom">${esc(it.nombre)}</b>
+      <span class="carta-por">${porque}</span>
+      <span class="carta-pista">← se terminó · queda →</span>
+    </div>
+    <div class="repaso-btns">
+      <button type="button" class="r-no" data-rep="agotado">Se terminó</button>
+      <button type="button" class="r-poco" data-rep="bajo">Poco</button>
+      <button type="button" class="r-si" data-rep="ok">Queda</button>
+    </div>`;
+  deslizar($("#carta"));
+}
+async function responderRepaso(est) {
+  const it = repasoCola[repasoK]; if (!it) return;
+  repasoRes[est]++;
+  const b = writeBatch(db);
+  await ponerEstado(it.id, est, b);
+  if (repasoK === repasoCola.length - 1) b.update(casaDoc(), { repasoUlt: serverTimestamp() });
+  b.commit().catch(e => toast("No se pudo guardar: " + e.message));
+  repasoK++; pintarRepaso();
+}
+// pasar la carta con el dedo: a la derecha queda, a la izquierda se terminó
+function deslizar(el) {
+  if (!el) return;
+  let x0 = null, dx = 0;
+  el.addEventListener("pointerdown", e => { x0 = e.clientX; dx = 0; el.setPointerCapture(e.pointerId); el.style.transition = "none"; });
+  el.addEventListener("pointermove", e => { if (x0 == null) return; dx = e.clientX - x0; el.style.transform = `translateX(${dx}px) rotate(${dx / 18}deg)`; el.dataset.dir = dx > 50 ? "si" : dx < -50 ? "no" : ""; });
+  const fin = () => {
+    if (x0 == null) return; x0 = null; el.style.transition = "";
+    if (Math.abs(dx) > 90) { el.style.transform = `translateX(${dx > 0 ? 600 : -600}px) rotate(${dx / 8}deg)`; setTimeout(() => responderRepaso(dx > 0 ? "ok" : "agotado"), 160); }
+    else { el.style.transform = ""; el.dataset.dir = ""; }
+  };
+  el.addEventListener("pointerup", fin); el.addEventListener("pointercancel", fin);
+}
+$("#dlgRepaso").addEventListener("click", e => {
+  const b = e.target.closest("button"); if (!b) return;
+  if (b.dataset.rep) responderRepaso(b.dataset.rep);
+  else if (b.id === "repasoCerrar" || b.id === "repasoListo") $("#dlgRepaso").close();
+  else if ("repasolista" in b.dataset) { $("#dlgRepaso").close(); tab = "lista"; render(); window.scrollTo(0, 0); }
+});
+
 /* ---------- cargar sin abrir la app: atajos del ícono, Siri / asistente (?voz=) y «Compartir → Kai» ---------- */
 async function atajosDeEntrada() {
-  const q = new URLSearchParams(location.search), accion = q.get("accion"), voz = q.get("voz"), comp = q.get("compartido");
+  const q = new URLSearchParams(location.search), accion = q.get("accion") || (q.get("tab") === "repaso" ? "repaso" : null), voz = q.get("voz"), comp = q.get("compartido");
   if (!accion && !voz && !comp) return;
   history.replaceState(null, "", location.pathname);
   // esperar a que llegue la despensa, así reconoce lo que ya hay
   for (let k = 0; k < 40 && !cargado; k++) await new Promise(r => setTimeout(r, 100));
   if (voz) { procesarTexto(voz); return; }
+  if (accion === "repaso") { abrirRepaso(); return; }
   if (comp) {
     try {
       const c = await caches.open("kai-compartido"), f = await c.match("foto"), t = await c.match("texto");
@@ -3370,6 +3553,20 @@ async function atajosDeEntrada() {
   $("#dlgAtajo").showModal();
 }
 $("#atajoNo").onclick = () => $("#dlgAtajo").close();
+function pintarAjustesKai() {
+  for (const b of document.querySelectorAll("[data-anotar]")) b.setAttribute("aria-pressed", (config.anotar || "simple") === b.dataset.anotar);
+  const c = $("#chkAuto"); if (c) c.checked = autoOn();
+}
+document.addEventListener("click", e => {
+  const b = e.target.closest("[data-anotar]"); if (!b) return;
+  config.anotar = b.dataset.anotar; pintarAjustesKai(); render();
+  updateDoc(casaDoc(), { anotar: b.dataset.anotar }).catch(er => toast("No se pudo guardar: " + er.message));
+});
+$("#chkAuto").addEventListener("change", e => {
+  config.autoConsumo = e.target.checked; render();
+  updateDoc(casaDoc(), { autoConsumo: e.target.checked }).catch(er => toast("No se pudo guardar: " + er.message));
+  toast(e.target.checked ? "Kai va a calcular solo lo que se gasta" : "Listo: solo cambia cuando lo anotás vos");
+});
 // iPhone: armar el atajo de Siri
 $("#btnCopiarSiri")?.addEventListener("click", async () => {
   const u = new URL("./?voz=", location.href).href;
@@ -3528,6 +3725,7 @@ let recAbierta = null, recDesc = [];
 function abrirReceta(id) {
   const rec = [...RECETAS, ...RECETAS_IA, ...RECETAS_COM].find(r => r.id === id); if (!rec) return;
   recAbierta = evaluar(rec);
+  if (!rec.ia) lsSet("recAbierta:" + casaId, JSON.stringify({ id: rec.id, t: Date.now() }));
   pintarReceta(false);
   if (!$("#dlgReceta").open) $("#dlgReceta").showModal();
 }
@@ -3604,7 +3802,7 @@ $("#dlgReceta").addEventListener("click", e => {
     recAbierta = evaluar(recAbierta.rec); pintarReceta(false);
     toast(nueva.includes(id) ? "♥ Guardada en favoritas" : "Sacada de favoritas");
   }
-  if ("hice" in d) { recDesc = []; if (recAbierta.rec.comunidad) marcarHecha(recAbierta.rec, false); pintarReceta(true); }
+  if ("hice" in d) { lsSet("recAbierta:" + casaId, ""); recDesc = []; if (recAbierta.rec.comunidad) marcarHecha(recAbierta.rec, false); pintarReceta(true); }
   if ("volverrec" in d) pintarReceta(false);
   if (d.reclista) {
     const f = recAbierta.filas[Number(d.reclista)];
@@ -3621,7 +3819,7 @@ $("#dlgReceta").addEventListener("click", e => {
     const b = writeBatch(db);
     const bajan = [];
     for (const x of usados) {
-      b.update(ref(x.it.id), { cantidad: increment(-x.c), ...firma() });
+      b.update(ref(x.it.id), { cantidad: Math.max(0, +(cantVista(x.it) - x.c).toFixed(3)), ...firma() });
       const dv = diasVence(x.it);
       logMov(b, x.it, -x.c, "consumo", { receta: recAbierta.rec.n, ...(dv != null && dv <= 3 ? { aprovecho: true } : {}) });
       if (estado(x.it) === "ok" && estado({ ...x.it, cantidad: num(x.it.cantidad) - x.c }) !== "ok") bajan.push(x.it.nombre);
@@ -4049,7 +4247,7 @@ $("#btnTkOk").onclick = () => {
     const precioU = Math.round(r.importe / (r.cant || 1));
     if (it) {
       const cant = it.unidad === "kg" || !r.kg ? r.cant : 1;
-      b.update(ref(it.id), { cantidad: increment(cant), precio: precioU, enCarrito: false, enLista: false, cantCompra: deleteField(), carritoPor: deleteField(), agregadoPor: deleteField(), agregadoTs: deleteField(), ...firma() });
+      b.update(ref(it.id), { cantidad: +(cantVista(it) + cant).toFixed(3), precio: precioU, enCarrito: false, enLista: false, cantCompra: deleteField(), carritoPor: deleteField(), agregadoPor: deleteField(), agregadoTs: deleteField(), ...firma() });
       logMov(b, it, cant, "compra", { precio: precioU });
       lineas.push({ itemId: it.id, nombre: it.nombre, categoria: catDe(it), unidad: it.unidad || "", cant, precio: precioU });
       alias[claveAlias(r.desc)] = it.id;
@@ -4518,7 +4716,7 @@ $("#btnVozOk").onclick = async () => {
       b.set(nr, base); logMov(b, { id: nr.id, ...base }, cant, "suma"); sumarAlCatalogo(nombre, cat, base.unidad); cargados.push(nombre); n++; continue;
     }
     if (!it) continue;
-    const paso = num(it.paso) || 1, q = num(it.cantidad);
+    const paso = num(it.paso) || 1, q = cantVista(it);
     const c = a.cant != null ? convertir(a.cant, a.uni, it) : paso;
     let nuevo = q;
     if (a.accion === "sumar") nuevo = q + c;
