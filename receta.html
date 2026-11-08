@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Receta · Kai</title>
+<meta name="description" content="Una receta para hacer con lo que tenés en casa, en Kai.">
+<meta property="og:title" content="Una receta de Kai">
+<meta property="og:description" content="Hacela con lo que tenés en casa.">
+<meta property="og:image" content="icon-512.png">
+<meta name="theme-color" content="#f2f3ec">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Young+Serif&family=Figtree:wght@400;600;700&family=Unbounded:wght@800&display=swap">
+<style>
+:root{--lino:#f2f3ec;--papel:#fbfcf6;--ink:#23271d;--muted:#5f6552;--line:#e1e3d6;--prof:#3f4a20;--prof-ink:#f2f3ec;--mostaza:#e0a52a;
+  --dash:repeating-linear-gradient(90deg,var(--line) 0 7px,transparent 7px 13px)}
+@media (prefers-color-scheme: dark){:root{--lino:#171a12;--papel:#22261b;--ink:#eceee3;--muted:#a7ad98;--line:#353a2b;--prof:#a9b86c;--prof-ink:#171a12}}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--lino);color:var(--ink);font:16px/1.5 Figtree,system-ui,sans-serif;padding:max(16px,env(safe-area-inset-top)) max(16px,env(safe-area-inset-right)) 32px max(16px,env(safe-area-inset-left))}
+.wrap{max-width:620px;margin:0 auto;display:grid;gap:16px}
+header{display:flex;align-items:center;justify-content:space-between}
+header img{height:44px}
+header a{color:var(--muted);font-size:.9rem}
+.foto{width:100%;max-height:300px;object-fit:cover;border-radius:20px}
+h1{margin:0;font:400 2.1rem/1.1 "Young Serif",Georgia,serif;text-wrap:balance}
+.meta{display:flex;flex-wrap:wrap;gap:8px}
+.meta span{background:var(--papel);border-radius:999px;padding:5px 12px;font-size:.88rem;box-shadow:0 0 0 1px var(--line)}
+.autor{color:var(--muted);margin:0}
+h2{margin:6px 0 0;font:800 .78rem/1 Unbounded,Figtree,sans-serif;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);display:flex;gap:10px;align-items:center}
+h2::after{content:"";flex:1;height:2px;background:var(--dash)}
+ul{list-style:none;margin:0;padding:0;background:var(--papel);border-radius:16px;box-shadow:0 0 0 1px var(--line)}
+li{display:flex;justify-content:space-between;gap:12px;padding:11px 16px}
+li + li{background:var(--dash) 16px 0/calc(100% - 32px) 2px no-repeat}
+li span:last-child{color:var(--muted);text-align:right}
+li small{color:var(--muted)}
+ol{margin:0;padding-left:22px;display:grid;gap:10px}
+ol li{display:list-item;padding:0;background:none}
+.cta{display:grid;gap:10px;justify-items:center;text-align:center;padding:22px 18px;border-radius:20px;background:var(--prof);color:var(--prof-ink)}
+.cta b{font:400 1.35rem/1.2 "Young Serif",Georgia,serif}
+.cta a{background:var(--mostaza);color:#23271d;text-decoration:none;font-weight:700;padding:12px 24px;border-radius:999px}
+.vacio{text-align:center;padding:40px 16px;color:var(--muted)}
+:focus-visible{outline:3px solid var(--prof);outline-offset:2px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header><img src="icon.svg" alt="Kai" width="44" height="44"><a href="./">Abrir Kai</a></header>
+  <main id="receta" class="wrap" style="gap:14px"><div class="vacio">Cargando la receta…</div></main>
+  <div class="cta"><b>Con lo que hay, ¿alcanza?</b><span>Kai te dice qué podés cocinar con lo que tenés en casa y te arma la lista con lo que falta.</span><a href="./?tab=cocinar">Probá Kai gratis</a></div>
+</div>
+<script type="module">
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const id = new URLSearchParams(location.search).get("id") || "";
+function pintar(r) {
+  document.title = `${r.n} · Kai`;
+  $("#receta").innerHTML = `${r.foto ? `<img class="foto" src="${esc(r.foto)}" alt="">` : ""}
+    <h1>${esc(r.n)}</h1>
+    <div class="meta"><span>⏱ ${esc(r.t)} min</span><span>🍽 ${esc(r.p)} porciones</span>${(r.tags || []).includes("veg") ? "<span>Veggie</span>" : ""}${(r.tags || []).includes("gourmet") ? "<span>Para lucirse</span>" : ""}</div>
+    ${r.autor ? `<p class="autor">Compartida por <b>${esc(r.autor)}</b>${r.barrio ? ` · ${esc(r.barrio)}` : ""} en la comunidad de Kai</p>` : ""}
+    <h2>Ingredientes</h2>
+    <ul>${r.ing.map(i => `<li><span>${esc(i.nombre)}${i.opc ? " <small>(opcional)</small>" : ""}</span><span>${esc(i.texto || "")}</span></li>`).join("")}</ul>
+    <h2>Cómo se hace</h2>
+    <ol>${r.pasos.map(p => `<li>${esc(p)}</li>`).join("")}</ol>`;
+}
+const noEsta = () => { $("#receta").innerHTML = `<div class="vacio">No encontramos esta receta. Puede que la hayan borrado.<br><br><a href="./?tab=cocinar">Ver más recetas en Kai</a></div>`; };
+try {
+  if (id.startsWith("c_")) {
+    const { initializeApp } = await import("https://www.gstatic.com/firebasejs/13.0.0/firebase-app.js");
+    const { initializeFirestore, doc, getDoc } = await import("https://www.gstatic.com/firebasejs/13.0.0/firebase-firestore.js");
+    const app = initializeApp({ apiKey: "AIzaSyDg0svGUiA37wOkrs31ROHMfx-OieBG6Xo", authDomain: "casa-48f64.firebaseapp.com", projectId: "casa-48f64", appId: "1:839069249046:web:a76ce8e1b2c6e15b920f37" });
+    const s = await getDoc(doc(initializeFirestore(app, {}, "default"), "recetasComunidad", id.slice(2)));
+    if (!s.exists()) noEsta(); else pintar(s.data());
+  } else {
+    const m = await import("./recetas.js");
+    const r = m.default.find(x => x.id === id);
+    r ? pintar(r) : noEsta();
+  }
+} catch { $("#receta").innerHTML = `<div class="vacio">No se pudo cargar la receta. Revisá la conexión y recargá.</div>`; }
+</script>
+</body>
+</html>

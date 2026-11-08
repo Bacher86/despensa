@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Lista del súper · Kai</title>
+<meta name="description" content="Una lista del súper compartida con Kai. Tildá lo que vas comprando, sin instalar nada.">
+<meta property="og:title" content="Lista del súper · Kai">
+<meta property="og:description" content="Tildá lo que vas comprando, sin instalar nada.">
+<meta property="og:image" content="icon-512.png">
+<meta name="theme-color" content="#f2f3ec">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Young+Serif&family=Figtree:wght@400;600;700&family=Unbounded:wght@800&display=swap">
+<style>
+:root{--lino:#f2f3ec;--papel:#fbfcf6;--ink:#23271d;--muted:#5f6552;--line:#e1e3d6;--prof:#3f4a20;--prof-ink:#f2f3ec;--mostaza:#e0a52a;
+  --dash:repeating-linear-gradient(90deg,var(--line) 0 7px,transparent 7px 13px);
+  --dientes:linear-gradient(#000 0 0) top/100% calc(100% - 9px) no-repeat,conic-gradient(from -45deg at bottom,#0000,#000 1deg 89deg,#0000 90deg) bottom/18px 9px repeat-x}
+@media (prefers-color-scheme: dark){:root{--lino:#171a12;--papel:#22261b;--ink:#eceee3;--muted:#a7ad98;--line:#353a2b;--prof:#a9b86c;--prof-ink:#171a12}}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--lino);color:var(--ink);font:16px/1.4 Figtree,system-ui,sans-serif;padding:max(16px,env(safe-area-inset-top)) max(16px,env(safe-area-inset-right)) 32px max(16px,env(safe-area-inset-left))}
+.wrap{max-width:560px;margin:0 auto;display:grid;gap:14px}
+header{display:flex;align-items:center;justify-content:space-between;gap:12px}
+header img{height:44px}
+h1{margin:0;font:400 1.6rem/1.15 "Young Serif",Georgia,serif;text-wrap:balance}
+.sub{color:var(--muted);font-size:.92rem;margin:0}
+.ticket{background:var(--papel);border-radius:16px 16px 0 0;padding:6px 0 18px;-webkit-mask:var(--dientes);mask:var(--dientes)}
+.cat{margin:14px 16px 4px;font:800 .72rem/1 Unbounded,Figtree,sans-serif;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);display:flex;gap:10px;align-items:center}
+.cat::after{content:"";flex:1;height:2px;background:var(--dash)}
+label.it{display:flex;align-items:center;gap:12px;padding:12px 16px;cursor:pointer}
+label.it + label.it{background:var(--dash) 16px 0/calc(100% - 32px) 2px no-repeat}
+label.it input{width:24px;height:24px;accent-color:var(--prof);flex:none}
+label.it b{font-weight:600}
+label.it small{display:block;color:var(--muted);font-size:.82rem}
+label.it.ok b{text-decoration:line-through;color:var(--muted)}
+.cant{margin-left:auto;font-weight:700;color:var(--muted);white-space:nowrap;font-variant-numeric:tabular-nums}
+.quien{display:flex;gap:8px;align-items:center;background:var(--papel);border-radius:14px;padding:10px 12px;box-shadow:0 0 0 1px var(--line)}
+.quien input{flex:1;border:0;background:transparent;font:inherit;color:var(--ink);min-width:0}
+.quien input:focus{outline:none}
+.vacio,.error{text-align:center;padding:30px 16px;color:var(--muted)}
+.cta{display:grid;gap:8px;justify-items:center;text-align:center;margin-top:10px;padding:18px;border:2px dashed var(--line);border-radius:18px}
+.cta a{background:var(--prof);color:var(--prof-ink);text-decoration:none;font-weight:700;padding:12px 22px;border-radius:999px}
+.prog{height:6px;border-radius:3px;background:var(--line);overflow:hidden}.prog i{display:block;height:100%;background:var(--mostaza);transition:width .3s}
+:focus-visible{outline:3px solid var(--prof);outline-offset:2px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header><img src="icon.svg" alt="Kai" width="44" height="44"><span class="sub" id="estado">Cargando…</span></header>
+  <div><h1 id="titulo">Lista del súper</h1><p class="sub" id="bajada">Tildá lo que vas comprando: le aparece al instante a quien te la mandó.</p></div>
+  <label class="quien"><span>👋</span><input id="nombre" maxlength="30" placeholder="Tu nombre (así saben quién lo compró)" autocomplete="given-name"></label>
+  <div class="prog" aria-hidden="true"><i id="prog" style="width:0"></i></div>
+  <div id="lista" class="ticket" aria-live="polite"><div class="vacio">Cargando la lista…</div></div>
+  <div class="cta"><b>¿Querés una lista que se arme sola?</b><span class="sub">Kai sabe qué hay en tu casa y te avisa antes de que algo se termine.</span><a href="./">Probá Kai gratis</a></div>
+</div>
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/13.0.0/firebase-app.js";
+import { initializeFirestore, doc, onSnapshot, updateDoc, deleteField } from "https://www.gstatic.com/firebasejs/13.0.0/firebase-firestore.js";
+const app = initializeApp({ apiKey: "AIzaSyDg0svGUiA37wOkrs31ROHMfx-OieBG6Xo", authDomain: "casa-48f64.firebaseapp.com", projectId: "casa-48f64", appId: "1:839069249046:web:a76ce8e1b2c6e15b920f37" });
+const db = initializeFirestore(app, {}, "default");
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const t = new URLSearchParams(location.search).get("t");
+try { $("#nombre").value = localStorage.getItem("kai:nombre") || ""; } catch {}
+$("#nombre").addEventListener("input", e => { try { localStorage.setItem("kai:nombre", e.target.value.trim()); } catch {} });
+let datos = null;
+function pintar() {
+  if (!datos) return;
+  const tild = datos.tildes || {}, its = datos.items || [];
+  $("#titulo").textContent = `Lista del súper de ${datos.casaNombre || "casa"}`;
+  document.title = `${$("#titulo").textContent} · Kai`;
+  const hechos = its.filter(i => tild[i.id] || i.e).length;
+  $("#estado").textContent = its.length ? `${hechos} de ${its.length}` : "";
+  $("#prog").style.width = its.length ? (hechos / its.length * 100) + "%" : "0";
+  if (!its.length) { $("#lista").innerHTML = `<div class="vacio">🎉 No falta nada. Cuando se termine algo en casa, aparece acá solo.</div>`; return; }
+  let cat = "", h = "";
+  for (const i of its) {
+    if (i.c !== cat) { cat = i.c; h += `<div class="cat">${esc(cat)}</div>`; }
+    const ok = !!(tild[i.id] || i.e), quien = typeof tild[i.id] === "string" ? tild[i.id] : "";
+    h += `<label class="it ${ok ? "ok" : ""}"><input type="checkbox" data-id="${esc(i.id)}" ${ok ? "checked" : ""} ${i.e && !tild[i.id] ? "disabled" : ""}>
+      <span><b>${esc(i.n)}</b>${ok ? `<small>${quien ? `✓ Lo compró ${esc(quien)}` : "✓ Ya está en el carrito"}</small>` : ""}</span><span class="cant">${esc(i.q)} ${esc(i.u)}</span></label>`;
+  }
+  $("#lista").innerHTML = h;
+}
+if (!t) { $("#lista").innerHTML = `<div class="error">Este link no tiene una lista. Pedile a quien te la mandó que lo vuelva a compartir.</div>`; $("#estado").textContent = ""; }
+else {
+  onSnapshot(doc(db, "listas", t), s => {
+    if (!s.exists()) { $("#lista").innerHTML = `<div class="error">Esta lista ya no está compartida. Pedile a quien te la mandó un link nuevo.</div>`; $("#estado").textContent = ""; return; }
+    datos = s.data(); pintar();
+  }, () => { $("#lista").innerHTML = `<div class="error">No se pudo abrir la lista. Revisá la conexión y recargá.</div>`; $("#estado").textContent = ""; });
+  document.addEventListener("change", async e => {
+    const id = e.target.dataset?.id; if (!id) return;
+    const quien = ($("#nombre").value.trim() || "alguien").slice(0, 30);
+    try { await updateDoc(doc(db, "listas", t), { [`tildes.${id}`]: e.target.checked ? quien : deleteField() }); }
+    catch { e.target.checked = !e.target.checked; alert("No se pudo guardar. Revisá la conexión."); }
+  });
+}
+</script>
+</body>
+</html>
