@@ -3116,7 +3116,7 @@ async function activarAvisos() {
 }
 // Avisos con la app cerrada (Firebase Cloud Messaging). La clave sale de Firebase → Configuración del proyecto →
 // Cloud Messaging → Certificados push web. Sin clave, Kai sigue avisando solo con la app abierta.
-const VAPID = "";
+const VAPID = "BDt4YZLumEf3WcD28AWZ7jRF82eySsi1G_2EPn5HeM4X6R4n1rd2R7VS98a1RqsVqAKfsv7v1M1HeSdycdDf734";
 async function registrarPush() {
   if (!VAPID || !casaId || !user || !puedeNotificar() || !("serviceWorker" in navigator)) return;
   try {
