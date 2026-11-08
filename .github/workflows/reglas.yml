@@ -1,0 +1,29 @@
+name: Publicar reglas de Firebase
+
+# Cada vez que cambia firestore.rules, las publica solas en Firebase (ya no hace falta copiarlas a mano).
+on:
+  push:
+    branches: [main]
+    paths: [firestore.rules]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  reglas:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+      - name: Instalar Firebase
+        working-directory: scripts
+        run: npm install --no-save --no-package-lock --silent firebase-admin@12.7.0
+      - name: Publicar
+        working-directory: scripts
+        env:
+          FIREBASE_SA: ${{ secrets.FIREBASE_SA }}
+        run: node reglas.mjs

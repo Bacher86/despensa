@@ -1,0 +1,121 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function logueado() { return request.auth != null; }
+    function casaPath(casa) { return /databases/$(database)/documents/hogar/$(casa); }
+    function esMiembro(casa) { return logueado() && exists(/databases/$(database)/documents/hogar/$(casa)/miembros/$(request.auth.uid)); }
+    function esCreador(casa) { return logueado() && get(casaPath(casa)).data.creador == request.auth.uid; }
+    function invitacionValida(casa, codigo) {
+      let inv = get(/databases/$(database)/documents/invitaciones/$(codigo)).data;
+      return inv.casa == casa && inv.expira > request.time;
+    }
+    // Administración: la app /administracion (usuario Uriel Bacher) y tu cuenta de Google.
+    function esAdmin() { return request.auth != null && request.auth.token.email in ['admin@despensa-casa.app', 'uriel.bacher@gmail.com']; }
+    function texto(d, campo, max) { return !(campo in d) || (d[campo] is string && d[campo].size() <= max); }
+    function nuevo() { return request.resource.data; }
+
+    // Versión de estas reglas: la app de administración la consulta para saber si están publicadas.
+    match /reglas/{version} { allow get: if version == 'v8'; }
+    match /admin/{doc} { allow read: if esAdmin(); }
+
+    match /usuarios/{uid} {
+      allow list: if esAdmin();
+      allow get: if esAdmin() || (logueado() && request.auth.uid == uid);
+      allow delete: if logueado() && request.auth.uid == uid;
+      allow create, update: if logueado() && request.auth.uid == uid
+        && texto(nuevo(), 'nombre', 60) && texto(nuevo(), 'apellido', 60)
+        && texto(nuevo(), 'provincia', 60) && texto(nuevo(), 'barrio', 80)
+        && (!('dni' in nuevo()) || nuevo().dni.matches('^[0-9]{7,8}$'));
+    }
+
+    match /dnis/{hash} {
+      allow create: if logueado() && nuevo().uid == request.auth.uid && nuevo().keys().hasOnly(['uid', 'ts']);
+      allow update: if logueado() && resource.data.uid == request.auth.uid && nuevo().uid == request.auth.uid;
+      allow delete: if logueado() && resource.data.uid == request.auth.uid;
+    }
+
+    match /anuncios/{id} {
+      allow read: if logueado();
+      allow create, update, delete: if esAdmin();
+      allow update: if logueado() && nuevo().diff(resource.data).affectedKeys().hasOnly(['vistas']) && nuevo().vistas == resource.data.get('vistas', 0) + 1;
+      allow update: if logueado() && nuevo().diff(resource.data).affectedKeys().hasOnly(['clicks']) && nuevo().clicks == resource.data.get('clicks', 0) + 1;
+    }
+
+    // Lista del súper compartida por link (lista.html): quien tiene el link la ve y solo puede tildar.
+    match /listas/{token} {
+      allow get: if true;
+      allow create: if logueado() && esMiembro(nuevo().casa);
+      allow delete: if logueado() && esMiembro(resource.data.casa);
+      allow update: if logueado() && esMiembro(resource.data.casa) && nuevo().casa == resource.data.casa;
+      allow update: if nuevo().diff(resource.data).affectedKeys().hasOnly(['tildes']) && nuevo().tildes.size() <= 300;
+    }
+
+    // Recetas de la comunidad: las comparte cualquier usuario, todos las leen y comentan.
+    match /recetasComunidad/{id} {
+      allow get: if true;               // la página pública de la receta (receta.html) la muestra sin cuenta
+      allow list: if logueado();
+      allow create: if logueado() && nuevo().autorUid == request.auth.uid
+        && nuevo().n is string && nuevo().n.size() >= 3 && nuevo().n.size() <= 80
+        && nuevo().ing is list && nuevo().ing.size() >= 2 && nuevo().ing.size() <= 40
+        && nuevo().pasos is list && nuevo().pasos.size() >= 1 && nuevo().pasos.size() <= 30
+        && texto(nuevo(), 'autor', 60) && texto(nuevo(), 'foto', 450000)
+        && nuevo().comentarios == 0 && nuevo().hechas == 0;
+      allow update: if logueado() && resource.data.autorUid == request.auth.uid && nuevo().autorUid == request.auth.uid
+        && nuevo().comentarios == resource.data.comentarios && nuevo().hechas == resource.data.hechas;
+      allow update: if logueado() && nuevo().diff(resource.data).affectedKeys().hasOnly(['comentarios', 'hechas'])
+        && nuevo().get('comentarios', 0) - resource.data.get('comentarios', 0) in [-1, 0, 1]
+        && nuevo().get('hechas', 0) - resource.data.get('hechas', 0) in [0, 1];
+      allow update: if esAdmin();
+      allow delete: if (logueado() && resource.data.autorUid == request.auth.uid) || esAdmin();
+      match /comentarios/{c} {
+        allow read: if logueado();
+        allow create: if logueado() && nuevo().autorUid == request.auth.uid
+          && nuevo().texto is string && nuevo().texto.size() >= 1 && nuevo().texto.size() <= 500
+          && texto(nuevo(), 'autor', 60);
+        allow delete: if (logueado() && resource.data.autorUid == request.auth.uid) || esAdmin();
+      }
+    }
+
+    match /productos/{clave} {
+      allow read: if logueado();
+      allow create: if logueado() && nuevo().keys().hasOnly(['nombre', 'norm', 'claves', 'categoria', 'unidad', 'usos', 'por', 'ts'])
+        && nuevo().nombre is string && nuevo().nombre.size() > 0 && nuevo().nombre.size() <= 120
+        && nuevo().claves is list && nuevo().claves.size() <= 60 && nuevo().usos == 1 && nuevo().por == request.auth.uid;
+      allow update: if logueado() && nuevo().diff(resource.data).affectedKeys().hasOnly(['usos', 'ts']) && nuevo().usos == resource.data.usos + 1;
+    }
+
+    match /catalogo/{codigo} {
+      allow get: if logueado();
+      allow create, update: if logueado() && nuevo().nombre is string && nuevo().nombre.size() > 0 && nuevo().nombre.size() <= 120
+        && nuevo().por == request.auth.uid && nuevo().keys().hasOnly(['nombre', 'categoria', 'unidad', 'por', 'ts']);
+    }
+
+    match /invitaciones/{codigo} {
+      allow get: if logueado();
+      allow create: if esMiembro(nuevo().casa) && nuevo().por == request.auth.uid;
+      allow update: if esMiembro(resource.data.casa) && nuevo().casa == resource.data.casa;
+      allow delete: if resource == null || esMiembro(resource.data.casa);
+    }
+
+    match /{ruta=**}/items/{id} { allow read: if esAdmin(); }
+    match /{ruta=**}/compras/{id} { allow read: if esAdmin(); }
+
+    match /hogar/{casa} {
+      allow list: if esAdmin();
+      allow get: if esAdmin() || esMiembro(casa);
+      allow create: if logueado() && nuevo().creador == request.auth.uid;
+      allow update: if esMiembro(casa) && nuevo().creador == resource.data.creador;
+      allow delete: if esCreador(casa);
+      match /miembros/{uid} {
+        allow read: if esMiembro(casa);
+        allow create: if logueado() && uid == request.auth.uid && (getAfter(casaPath(casa)).data.creador == request.auth.uid
+          || (nuevo().codigo is string && invitacionValida(casa, nuevo().codigo)));
+        allow update: if logueado() && uid == request.auth.uid;
+        allow delete: if logueado() && (uid == request.auth.uid || esCreador(casa));
+      }
+      match /{coleccion}/{documento=**} {
+        allow read, write: if coleccion != 'miembros' && esMiembro(casa);
+      }
+    }
+  }
+}
