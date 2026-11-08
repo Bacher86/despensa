@@ -29,5 +29,76 @@
       "type": "image/png",
       "purpose": "maskable"
     }
+  ],
+  "share_target": {
+    "action": "compartir",
+    "method": "POST",
+    "enctype": "multipart/form-data",
+    "params": {
+      "title": "titulo",
+      "text": "texto",
+      "url": "link",
+      "files": [
+        {
+          "name": "foto",
+          "accept": [
+            "image/*"
+          ]
+        }
+      ]
+    }
+  },
+  "shortcuts": [
+    {
+      "name": "Escanear ticket",
+      "short_name": "Ticket",
+      "description": "Sacale una foto al ticket del súper",
+      "url": "./?accion=ticket",
+      "icons": [
+        {
+          "src": "icon-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
+    },
+    {
+      "name": "Dictar",
+      "short_name": "Dictar",
+      "description": "Decí lo que compraste o lo que se terminó",
+      "url": "./?accion=voz",
+      "icons": [
+        {
+          "src": "icon-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
+    },
+    {
+      "name": "Se terminó algo",
+      "short_name": "Se terminó",
+      "description": "Avisá qué se terminó y va a la lista",
+      "url": "./?accion=termino",
+      "icons": [
+        {
+          "src": "icon-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
+    },
+    {
+      "name": "Lista del súper",
+      "short_name": "Lista",
+      "url": "./?tab=lista",
+      "icons": [
+        {
+          "src": "icon-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
+    }
   ]
 }

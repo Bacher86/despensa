@@ -1,6 +1,6 @@
 // Service worker: permite instalar la app y abrirla rápido (y sin señal).
 // Si cambiás index.html, subí también este archivo con VERSION nueva para que los teléfonos se actualicen.
-const VERSION = "despensa-v30";
+const VERSION = "despensa-v31";
 const APP = ["./", "./index.html", "./recetas.js", "./manifest.webmanifest", "./icon.svg", "./icon-192.png", "./icon-512.png", "./apple-touch-icon.png"];
 
 // Librerías externas que conviene guardar en el teléfono (Firebase, fuentes, escáner)
@@ -12,13 +12,27 @@ self.addEventListener("install", e => {
 
 self.addEventListener("activate", e => {
   e.waitUntil(
-    caches.keys().then(ks => Promise.all(ks.filter(k => k !== VERSION && k !== "despensa-datos").map(k => caches.delete(k))))
+    caches.keys().then(ks => Promise.all(ks.filter(k => k !== VERSION && k !== "despensa-datos" && k !== "kai-compartido").map(k => caches.delete(k))))
       .then(() => self.clients.claim())
   );
 });
 
 self.addEventListener("fetch", e => {
   const req = e.request;
+  // «Compartir → Kai»: una foto del ticket o un texto llegan acá; los guardamos y abrimos la app para procesarlos
+  if (req.method === "POST" && new URL(req.url).pathname.endsWith("/compartir")) {
+    e.respondWith((async () => {
+      const fd = await req.formData();
+      const c = await caches.open("kai-compartido");
+      await c.delete("foto"); await c.delete("texto");
+      const foto = fd.get("foto");
+      if (foto && foto.size) await c.put("foto", new Response(foto, { headers: { "content-type": foto.type || "image/jpeg" } }));
+      const texto = [fd.get("titulo"), fd.get("texto"), fd.get("link")].filter(x => x && String(x).trim()).join("\n");
+      if (texto) await c.put("texto", new Response(texto));
+      return Response.redirect(new URL("./?compartido=1", self.registration.scope).href, 303);
+    })());
+    return;
+  }
   if (req.method !== "GET") return;
   const url = new URL(req.url);
 

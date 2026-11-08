@@ -244,6 +244,7 @@ main{padding-block:12px calc(96px + env(safe-area-inset-bottom,0px))}
 .cm-form{display:grid;gap:8px}
 .cm-form textarea{width:100%;padding:10px 12px;border-radius:12px;border:1px solid var(--line);background:var(--bg);color:var(--ink);font:inherit;resize:vertical}
 .btn.wa{background:#25d366;color:#0b2e17;display:flex;align-items:center;justify-content:center;gap:8px;margin:4px 0 2px}
+.atajos-ayuda{display:grid;gap:8px}.atajos-ayuda details{border-radius:12px;background:var(--bg);padding:10px 12px}.atajos-ayuda summary{cursor:pointer}.atajos-ayuda p,.atajos-ayuda ol{margin:8px 0 0;font-size:.92rem}.atajos-ayuda ol{padding-left:20px;display:grid;gap:4px}
 .cm-form label{display:flex;gap:6px;align-items:center;font-size:.88rem}
 .rec-lista{display:grid;gap:1px;background:var(--line);border-radius:12px;overflow:hidden}
 .rec-fila{display:flex;gap:10px;align-items:center;background:var(--surface);padding:10px 12px}
@@ -772,7 +773,27 @@ main h2::after{content:"";flex:1;min-width:28px;height:2px;background:var(--dash
         <p><b>Sos administrador.</b> Mirá cuántos usuarios hay, de qué barrios y cuánto usan la app.</p>
         <a class="btn" href="admin.html" target="_blank" rel="noopener">Abrir panel de administración</a>
       </div>
-      <h2 style="margin-top:6px">Tus logros</h2>
+      <h2 style="margin-top:6px">Cargar sin abrir la app</h2>
+      <div class="panel atajos-ayuda">
+        <details>
+          <summary><b>Android</b> · compartir y atajos del ícono</summary>
+          <p><b>Foto del ticket:</b> sacale una foto con la cámara común, tocá <b>Compartir</b> y elegí <b>Kai</b>. Se carga sola.</p>
+          <p><b>Atajos:</b> mantené apretado el ícono de Kai: aparecen <b>Escanear ticket</b>, <b>Dictar</b>, <b>Se terminó algo</b> y <b>Lista del súper</b>.</p>
+          <p class="hint">Hace falta tener Kai instalada en la pantalla de inicio.</p>
+        </details>
+        <details>
+          <summary><b>iPhone</b> · «Oye Siri, Kai»</summary>
+          <ol>
+            <li>Abrí la app <b>Atajos</b> y tocá <b>+</b>.</li>
+            <li>Agregá la acción <b>Dictar texto</b> (idioma: español).</li>
+            <li>Agregá <b>Codificar URL</b> y después <b>URL</b>: pegá el link de abajo y, al final, insertá la variable <b>URL codificado</b>.</li>
+            <li>Agregá <b>Abrir URL</b> y nombrá el atajo <b>Kai</b>.</li>
+          </ol>
+          <p>Listo: decí «Oye Siri, Kai», después «compré 30 huevos y se terminó el café», y confirmás con un toque.</p>
+          <button class="btn ghost sm" type="button" id="btnCopiarSiri">Copiar link para el atajo</button>
+        </details>
+      </div>
+      <h2>Tus logros</h2>
       <div class="panel" id="logros"></div>
       <div class="reco">
         <b>Recomendá Kai</b>
@@ -892,6 +913,14 @@ main h2::after{content:"";flex:1;min-width:28px;height:2px;background:var(--dash
 </dialog>
 
 <!-- Voz -->
+<dialog id="dlgAtajo">
+  <div class="sheet" style="text-align:center">
+    <h3 id="atajoTit">Escanear el ticket</h3>
+    <p id="atajoTxt" class="hint" style="margin:0"></p>
+    <button class="btn full" type="button" id="atajoBtn" style="font-size:1.1rem;padding:16px">📷 Sacar la foto</button>
+    <button class="btn ghost full" type="button" id="atajoNo">Ahora no</button>
+  </div>
+</dialog>
 <dialog id="dlgVoz">
   <div class="sheet">
     <h3>Decile a la app</h3>
@@ -1534,6 +1563,7 @@ function entrarCasa(id) {
   const tabUrl = new URLSearchParams(location.search).get("tab");
   pantalla("app"); tab = ["lista", "cocinar", "mas"].includes(tabUrl) ? tabUrl : "despensa"; render();
   if (tabUrl) history.replaceState(null, "", location.pathname);
+  atajosDeEntrada();
   renderCuenta();
   registrarVisita();
   cargarAnuncios(); cargarComunidad();
@@ -3312,6 +3342,40 @@ $("#fNuevaRec").addEventListener("submit", async e => {
   b.disabled = false; b.textContent = "Publicar receta";
 });
 
+/* ---------- cargar sin abrir la app: atajos del ícono, Siri / asistente (?voz=) y «Compartir → Kai» ---------- */
+async function atajosDeEntrada() {
+  const q = new URLSearchParams(location.search), accion = q.get("accion"), voz = q.get("voz"), comp = q.get("compartido");
+  if (!accion && !voz && !comp) return;
+  history.replaceState(null, "", location.pathname);
+  // esperar a que llegue la despensa, así reconoce lo que ya hay
+  for (let k = 0; k < 40 && !cargado; k++) await new Promise(r => setTimeout(r, 100));
+  if (voz) { procesarTexto(voz); return; }
+  if (comp) {
+    try {
+      const c = await caches.open("kai-compartido"), f = await c.match("foto"), t = await c.match("texto");
+      await c.delete("foto"); await c.delete("texto");
+      if (f) { const b = await f.blob(); cargarTicket(new File([b], "ticket.jpg", { type: b.type || "image/jpeg" })); return; }
+      if (t) { procesarTexto(await t.text()); return; }
+    } catch {}
+    toast("No llegó nada para cargar. Probá compartir de nuevo.");
+    return;
+  }
+  // el celular pide un toque antes de abrir la cámara o el micrófono
+  const A = { ticket: ["Escanear el ticket", "Sacale una foto al ticket del súper y Kai carga todo.", "📷 Sacar la foto", () => $("#ticketInput").click()],
+    voz: ["Dictar", "Decí lo que compraste, lo que usaste o lo que se terminó.", "🎙️ Hablar", () => escuchar()],
+    termino: ["¿Qué se terminó?", "Decilo y va directo a la lista del súper.", "🎙️ Hablar", () => escuchar("se terminó")] }[accion];
+  if (!A) return;
+  $("#atajoTit").textContent = A[0]; $("#atajoTxt").textContent = A[1]; $("#atajoBtn").textContent = A[2];
+  $("#atajoBtn").onclick = () => { $("#dlgAtajo").close(); A[3](); };
+  $("#dlgAtajo").showModal();
+}
+$("#atajoNo").onclick = () => $("#dlgAtajo").close();
+// iPhone: armar el atajo de Siri
+$("#btnCopiarSiri")?.addEventListener("click", async () => {
+  const u = new URL("./?voz=", location.href).href;
+  try { await navigator.clipboard.writeText(u); toast("✓ Link copiado: pegalo en el atajo"); } catch { prompt("Copiá este link:", u); }
+});
+
 /* ---------- menú de la semana ----------
    Elige las comidas que más aprovechan lo que hay (y lo que vence), sin repetir el ingrediente
    principal dos días seguidos, y descuenta en una despensa "virtual" lo que va usando cada día.  */
@@ -3888,9 +3952,8 @@ function emparejar(desc) {
 const nombreDesdeTicket = d => capitalizar(limpiarDesc(d).replace(/\b(kgs?|kg|un|unid|u|x)\b/g, " ").replace(/\s+/g, " ").trim()).slice(0, 50);
 
 let ticketRes = [], ticketTotal = 0, comercioTicket = "Supermercado";
-$("#ticketInput").addEventListener("change", async e => {
-  const file = e.target.files[0]; e.target.value = "";
-  if (!file) return;
+$("#ticketInput").addEventListener("change", e => { const f = e.target.files[0]; e.target.value = ""; if (f) cargarTicket(f); });
+async function cargarTicket(file) {
   ticketRes = []; ticketTotal = 0;
   $("#tkLista").innerHTML = ""; $("#tkAcc").hidden = true; $("#tkPie").hidden = true; $("#tkPrev").removeAttribute("src");
   const est = $("#tkEstado");
@@ -3924,7 +3987,7 @@ $("#ticketInput").addEventListener("change", async e => {
   } catch (er) {
     est.innerHTML = `<div class="lookup no"><span><b>No se pudo leer el ticket.</b> ${/fetch|network|load/i.test(String(er?.message)) ? "La primera vez hace falta internet para bajar el lector." : esc(String(er?.message || er).slice(0, 120))}</span></div>`;
   }
-});
+}
 
 function pintarTicket() {
   const opciones = sel => `<option value="">Producto nuevo</option>` + items.map(i => `<option value="${i.id}" ${i.id === sel ? "selected" : ""}>Sumar a: ${esc(i.nombre)}</option>`).join("");
@@ -4348,7 +4411,20 @@ function cerrarEscucha() {
   clearTimeout(vozSilencio);
   vozTexto = textoVoz();
   if (!vozTexto) { if ($("#vozEstado").dataset.modo === "escuchando") pintarVoz("error", "No te escuché. Tocá el micrófono y hablá cerca del teléfono."); return; }
+  if (vozPrefijo && !/termin|acab|falta|compr|traje|us[eé]|gast|queda|hay/i.test(vozTexto)) vozTexto = vozPrefijo + " " + vozTexto;
   vozAcciones = interpretar(vozTexto);
+  pintarVoz("listo");
+}
+let vozPrefijo = "";
+// texto que llega sin abrir el micrófono: atajo de Siri, «Compartir → Kai», link
+function procesarTexto(texto) {
+  vozPrefijo = "";
+  // un texto compartido puede venir como lista: cada renglón es un producto; sacamos títulos como «Lista:» o «Súper»
+  const renglones = String(texto).split(/\n+/).map(x => x.replace(/^\s*[-•*·\d.)]+\s*/, "").replace(/^[^,:]{0,24}:\s*/, "").trim()).filter(Boolean);
+  vozTexto = renglones.join(", ").replace(/\s+/g, " ").trim().slice(0, 600);
+  if (!vozTexto) return;
+  vozAcciones = interpretar(vozTexto);
+  if (!$("#dlgVoz").open) $("#dlgVoz").showModal();
   pintarVoz("listo");
 }
 function arrancarReco() {
@@ -4393,7 +4469,8 @@ function arrancarReco() {
   };
   reco.start();
 }
-function escuchar() {
+function escuchar(prefijo = "") {
+  vozPrefijo = typeof prefijo === "string" ? prefijo : "";
   if (!SR) { toast("Este navegador no entiende la voz. Probá con Chrome."); return; }
   vozAcciones = []; vozTexto = ""; vozFinales = []; vozParcial = ""; vozUltimo = 0; vozParar = false; vozInicio = Date.now();
   pintarVoz("escuchando");
@@ -4407,7 +4484,7 @@ function pintarVoz(modo, msg = "") {
   if (modo === "escuchando") {
     est.innerHTML = `<div class="voz-mic"><span class="pulso grande" aria-hidden="true"></span><b>Te escucho…</b></div>
       <p id="vozTexto" class="voz-texto"></p>
-      <p class="hint" style="margin:0">Decí todo de corrido, por ejemplo: «compré 30 huevos, una caja de arándanos, un mango y 7 mandarinas», «se terminó la leche», «falta pan».</p>
+      ${vozPrefijo ? `<p class="hint" style="margin:0">Decí qué se terminó, por ejemplo: «leche, yerba y pan».</p>` : ""}<p class="hint" style="margin:0" ${vozPrefijo ? "hidden" : ""}>Decí todo de corrido, por ejemplo: «compré 30 huevos, una caja de arándanos, un mango y 7 mandarinas», «se terminó la leche», «falta pan».</p>
       <button class="btn full" type="button" id="btnVozFin">Ya terminé</button>`;
     $("#vozLista").innerHTML = "";
     return;
@@ -4426,8 +4503,8 @@ $("#dlgVoz").addEventListener("click", e => {
   if (t.id === "btnVozFin") { terminarVoz(); return; }
   if (t.dataset.vozquitar) { const a = vozAcciones[Number(t.dataset.vozquitar)]; a.ok = !a.ok; pintarVoz("listo"); }
 });
-$("#btnVoz").onclick = escuchar;
-$("#btnVozOtra").onclick = escuchar;
+$("#btnVoz").onclick = () => escuchar();
+$("#btnVozOtra").onclick = () => escuchar(vozPrefijo);
 $("#btnVozCerrar").onclick = () => { vozParar = true; clearTimeout(vozSilencio); try { reco?.abort(); } catch {} $("#dlgVoz").close(); };
 $("#btnVozOk").onclick = async () => {
   const b = writeBatch(db); let n = 0; const aLista = [], cargados = [], esperas = [];
