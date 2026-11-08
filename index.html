@@ -1182,7 +1182,7 @@ main h2::after{content:"";flex:1;min-width:28px;height:2px;background:var(--dash
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/13.0.0/firebase-app.js";
 import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect, onAuthStateChanged, signOut, createUserWithEmailAndPassword, signInWithEmailAndPassword, sendPasswordResetEmail, updateProfile, deleteUser } from "https://www.gstatic.com/firebasejs/13.0.0/firebase-auth.js";
-import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager, collection, doc, getDoc, getDocs, onSnapshot, addDoc, updateDoc, deleteDoc, setDoc, increment, serverTimestamp, writeBatch, deleteField, query, where, orderBy, limit, Timestamp } from "https://www.gstatic.com/firebasejs/13.0.0/firebase-firestore.js";
+import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager, collection, doc, getDoc, getDocs, onSnapshot, addDoc, updateDoc, deleteDoc, setDoc, increment, serverTimestamp, writeBatch, deleteField, arrayUnion, arrayRemove, query, where, orderBy, limit, Timestamp } from "https://www.gstatic.com/firebasejs/13.0.0/firebase-firestore.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyDg0svGUiA37wOkrs31ROHMfx-OieBG6Xo",
@@ -1675,6 +1675,7 @@ function entrarCasa(id) {
   renderCuenta();
   registrarVisita();
   cargarAnuncios(); cargarComunidad();
+  setTimeout(registrarPush, 3000);
   const opt = { serverTimestamps: "estimate" };
   subs.push(onSnapshot(itemsCol(), s => {
     items = s.docs.map(d => ({ id: d.id, ...d.data(opt) })).sort((a, b) => (a.nombre || "").localeCompare(b.nombre || "", "es"));
@@ -3108,9 +3109,32 @@ async function activarAvisos() {
   if (p !== "granted") { toast("Sin permiso no podemos avisarte. Podés activarlo en los ajustes del navegador."); pintarAvisos(); return; }
   lsSet("avisos", "1");
   registrarSincro();
+  registrarPush();
   guardarParaSW();
   pintarAvisos();
   notificar("¡Listo! Los avisos están activados", "Te vamos a avisar cuando algo se acabe y el resumen de cada semana.", "prueba");
+}
+// Avisos con la app cerrada (Firebase Cloud Messaging). La clave sale de Firebase → Configuración del proyecto →
+// Cloud Messaging → Certificados push web. Sin clave, Kai sigue avisando solo con la app abierta.
+const VAPID = "";
+async function registrarPush() {
+  if (!VAPID || !casaId || !user || !puedeNotificar() || !("serviceWorker" in navigator)) return;
+  try {
+    const m = await import("https://www.gstatic.com/firebasejs/13.0.0/firebase-messaging.js");
+    if (!(await m.isSupported())) return;
+    const reg = await navigator.serviceWorker.ready;
+    const token = await m.getToken(m.getMessaging(app), { vapidKey: VAPID, serviceWorkerRegistration: reg });
+    if (!token) return;
+    const k = "fcm:" + casaId + ":" + user.uid;
+    if (lsGet(k) === token) return;
+    await updateDoc(doc(db, "hogar", casaId, "miembros", user.uid), { fcm: arrayUnion(token) });
+    lsSet(k, token); lsSet("fcm:token", token);
+  } catch (e) { console.warn("Avisos push:", e?.message || e); }
+}
+function quitarPush() {
+  const t = lsGet("fcm:token"); if (!t || !casaId || !user) return;
+  updateDoc(doc(db, "hogar", casaId, "miembros", user.uid), { fcm: arrayRemove(t) }).catch(() => {});
+  lsSet("fcm:" + casaId + ":" + user.uid, "");
 }
 async function registrarSincro() {
   try {
@@ -3138,7 +3162,7 @@ function pintarAvisos() {
 $("#resDia").innerHTML = DIAS.map((d, i) => `<option value="${i}">Los ${d}</option>`).join("") + `<option value="-1">No quiero resumen</option>`;
 $("#resHora").innerHTML = [8, 10, 12, 18, 19, 20, 21].map(h => `<option value="${h}">A las ${h} h</option>`).join("");
 $("#btnAvisos").onclick = activarAvisos;
-$("#btnAvisosOff").onclick = () => { lsSet("avisos", "0"); guardarParaSW(); pintarAvisos(); toast("Avisos desactivados"); };
+$("#btnAvisosOff").onclick = () => { quitarPush(); lsSet("avisos", "0"); guardarParaSW(); pintarAvisos(); toast("Avisos desactivados"); };
 for (const id of ["#resDia", "#resHora"]) $(id).addEventListener("change", () => {
   lsSet("resumen", JSON.stringify({ dia: Number($("#resDia").value), hora: Number($("#resHora").value) }));
   if (casaId) lsSet("resumen:ult:" + casaId, String(Date.now()));

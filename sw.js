@@ -1,6 +1,6 @@
 // Service worker: permite instalar la app y abrirla rápido (y sin señal).
 // Si cambiás index.html, subí también este archivo con VERSION nueva para que los teléfonos se actualicen.
-const VERSION = "despensa-v33";
+const VERSION = "despensa-v34";
 const APP = ["./", "./index.html", "./recetas.js", "./manifest.webmanifest", "./icon.svg", "./icon-192.png", "./icon-512.png", "./apple-touch-icon.png"];
 
 // Librerías externas que conviene guardar en el teléfono (Firebase, fuentes, escáner)
@@ -59,6 +59,16 @@ self.addEventListener("fetch", e => {
     );
   }
   // Todo lo demás (Firebase, login de Google) pasa directo, sin tocar.
+});
+
+// Avisos que llegan con la app cerrada (los manda scripts/avisos.mjs desde GitHub Actions)
+self.addEventListener("push", e => {
+  let d = {};
+  try { const j = e.data?.json() || {}; d = j.data || j.notification || j; } catch { d = { body: e.data?.text() }; }
+  e.waitUntil(self.registration.showNotification(d.title || "Kai", {
+    body: d.body || "", tag: d.tag || undefined, renotify: !!d.tag, icon: "icon-192.png", badge: "icon-192.png",
+    data: { tab: d.tab || "despensa" },
+  }));
 });
 
 // Tocar un aviso abre la app en la pestaña que corresponde
