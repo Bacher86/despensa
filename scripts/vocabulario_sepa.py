@@ -206,7 +206,7 @@ def main():
                         if f and inom is not None and inom < len(f): bandera[(f[ic] if ic is not None else "", f[ib] if ib is not None else "")] = f[inom].strip()
                 except Exception as e: log("  comercio.csv raro:", e)
             cab, lec = leer_csv(z, csvs["productos.csv"])
-            ix = dict(com=col(cab, "id_comercio"), ban=col(cab, "id_bandera"), ean=col(cab, "productos_ean", "id_producto"),
+            ix = dict(com=col(cab, "id_comercio"), ban=col(cab, "id_bandera"), ean=col(cab, "id_producto"),
                       desc=col(cab, "productos_descripcion", "descripcion"), marca=col(cab, "productos_marca", "marca"))
             if ix["desc"] is None: return
             for f in lec:
@@ -247,7 +247,7 @@ def main():
         d, m = ean_nom[e].split("\t")
         eans[e] = nombre_lindo(d, m)
     json.dump(eans, open("datos/ean.json", "w", encoding="utf-8"), ensure_ascii=False, separators=(",", ":"))
-    with open("/tmp/muestras.txt", "w", encoding="utf-8") as f:
+    with open("datos/muestras_cadenas.txt", "w", encoding="utf-8") as f:
         for b, ms in sorted(muestras.items(), key=lambda x: x[0]):
             f.write(f"\n=== {b}\n" + "\n".join(ms) + "\n")
     log(f"vocab.json {os.path.getsize('datos/vocab.json') / 1e3:.0f} KB · ean.json {os.path.getsize('datos/ean.json') / 1e3:.0f} KB ({len(eans):,} productos)")
