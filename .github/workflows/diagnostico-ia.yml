@@ -1,0 +1,23 @@
+name: Diagnóstico de la IA
+
+# Se corre a mano: prueba si Firebase AI Logic (Gemini) responde para este proyecto.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  ia:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 3
+    steps:
+      - name: Probar Gemini por Firebase AI Logic
+        run: |
+          for m in gemini-flash-latest gemini-2.5-flash gemini-2.0-flash; do
+            echo "== $m"
+            curl -s -X POST "https://firebasevertexai.googleapis.com/v1beta/projects/casa-48f64/models/$m:generateContent" \
+              -H "Content-Type: application/json" -H "x-goog-api-key: AIzaSyDg0svGUiA37wOkrs31ROHMfx-OieBG6Xo" \
+              -H "X-Firebase-AppId: 1:839069249046:web:a76ce8e1b2c6e15b920f37" \
+              -d '{"contents":[{"role":"user","parts":[{"text":"Decí hola en una palabra"}]}]}' | head -c 600; echo
+          done
