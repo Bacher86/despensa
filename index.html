@@ -488,8 +488,10 @@ dialog::backdrop{background:rgba(0,0,0,.45)}
 .inline input{padding:11px 12px;border-radius:10px;border:1px solid var(--line);background:var(--bg)}
 .members{display:grid;gap:1px;background:var(--line);border-radius:10px;overflow:hidden;border:1px solid var(--line)}
 .member{display:flex;justify-content:space-between;align-items:center;gap:10px;background:var(--surface);padding:10px 12px}
-.member div{min-width:0;display:grid}
-.member .row-meta{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.member div{min-width:0;display:grid;flex:1}
+.member .avatar{width:36px;height:36px;border-radius:50%;display:grid;place-items:center;flex:none;background:var(--accent-soft,#e7ebd6);color:var(--ink);font-weight:800}
+.members-tit{display:grid;gap:2px;margin:6px 0 2px}.members-tit small{color:var(--muted);font-size:.82rem}
+.member .row-meta{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.member .row-meta.envuelve{white-space:normal}
 .inv-link{background:var(--bg);border-radius:10px;padding:10px 12px;font-size:.88rem;overflow-wrap:anywhere;user-select:all;font-variant-numeric:tabular-nums}
 .inv-code{font:800 1.3rem var(--f-display);letter-spacing:.12em}
 
@@ -850,6 +852,7 @@ main h2::after{content:"";flex:1;min-width:28px;height:2px;background:var(--dash
       <h2>Tu casa</h2>
       <div class="panel">
         <form class="inline" id="frmRenombrar"><input id="casaNombre" aria-label="Nombre de la casa" autocomplete="off"><button class="btn ghost sm" type="submit">Renombrar</button></form>
+        <div class="members-tit"><b id="miembrosTit">Quiénes están en la casa</b><small>Todos los que entraron a esta casa con su cuenta de Kai</small></div>
         <div id="miembros" class="members"></div>
       </div>
       <h2>Invitar a la familia</h2>
@@ -1602,6 +1605,13 @@ function registrarVisita() {
   const plataforma = /android/i.test(navigator.userAgent) ? "android" : esIOS() ? "ios" : "compu";
   setDoc(perfilRef(), { visto: serverTimestamp(), plataforma, instalada: yaInstalada() }, { merge: true }).catch(() => {});
 }
+// para que los de la casa vean cuándo usó Kai cada uno (una vez por día)
+function registrarVisitaCasa() {
+  if (!user || !casaId) return;
+  const k = "vistoCasa:" + casaId + ":" + user.uid, hoy = new Date().toISOString().slice(0, 10);
+  if (lsGet(k) === hoy) return;
+  updateDoc(doc(db, "hogar", casaId, "miembros", user.uid), { visto: serverTimestamp() }).then(() => lsSet(k, hoy)).catch(() => {});
+}
 const ADMINS = ["uriel.bacher@gmail.com"];   // emails que ven el botón del panel
 function revisarAdmin() {
   if (!user) return;
@@ -1683,7 +1693,7 @@ function entrarCasa(id) {
   if (tabUrl && !vaRepaso) history.replaceState(null, "", location.pathname);
   atajosDeEntrada();
   renderCuenta();
-  registrarVisita();
+  registrarVisita(); registrarVisitaCasa();
   cargarAnuncios(); cargarComunidad();
   setTimeout(registrarPush, 3000);
   const opt = { serverTimestamps: "estimate" };
@@ -1774,9 +1784,13 @@ function renderCasa() {
   const inp = $("#casaNombre");
   if (document.activeElement !== inp) inp.value = config.nombre || "";
   const soyAdmin = config.creador === user?.uid;
+  $("#miembrosTit").textContent = `Quiénes están en la casa (${miembros.length})`;
+  const fechaCorta = t => ms(t) ? new Date(ms(t)).toLocaleDateString("es-AR", { day: "numeric", month: "short" }) : "";
+  const usado = m => { const t = m.id === user.uid ? Date.now() : ms(m.visto); if (!t) return ""; const d = Math.floor((Date.now() - t) / DIA); return d <= 0 ? "usó Kai hoy" : d === 1 ? "usó Kai ayer" : `usó Kai hace ${d} días`; };
   $("#miembros").innerHTML = miembros.map(m => `
-    <div class="member"><div><span class="row-name">${esc(m.nombre || "Sin nombre")}${m.id === user.uid ? " (vos)" : ""}</span>
-      <span class="row-meta">${m.id === config.creador ? "Creó la casa · " : ""}${esc(m.email)}</span></div>
+    <div class="member"><span class="avatar" aria-hidden="true">${esc((m.nombre || "?").trim()[0] || "?").toUpperCase()}</span><div><span class="row-name">${esc(m.nombre || "Sin nombre")}${m.id === user.uid ? " (vos)" : ""}</span>
+      <span class="row-meta envuelve">${[m.id === config.creador ? "Creó la casa" : ms(m.desde) ? "Entró el " + fechaCorta(m.desde) : "", usado(m), m.fcm?.length ? "avisos activados" : ""].filter(Boolean).join(" · ")}</span>
+      ${m.email ? `<span class="row-meta">${esc(m.email)}</span>` : ""}</div>
       ${soyAdmin && m.id !== user.uid ? `<button class="btn ghost sm" data-quitar="${m.id}">${quitarId === m.id ? "Confirmar" : "Quitar"}</button>` : ""}
     </div>`).join("");
   const c = config.invitacion;
