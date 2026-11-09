@@ -8,6 +8,7 @@
 import { initializeApp, cert } from "firebase-admin/app";
 import { getFirestore, Timestamp, FieldValue } from "firebase-admin/firestore";
 import { getMessaging } from "firebase-admin/messaging";
+import { hogarDe, tasaBase } from "../consumo.js";
 
 const DIA = 86400000;
 const num = v => { const n = parseFloat(String(v ?? "").replace(",", ".")); return isFinite(n) ? n : 0; };
@@ -39,7 +40,7 @@ export function calcTasas(movs, ahora = Date.now()) {
     }
     if (r.length) {
       tasas.set(id, r.reduce((s, x) => s + x, 0) / r.length);
-      info.set(id, { qProm: c.length ? c.reduce((s, x) => s + x.q, 0) / c.length : 0 });
+      info.set(id, { qProm: c.length ? c.reduce((s, x) => s + x.q, 0) / c.length : 0, n: c.length + p.cons.length });
     }
   }
   return { tasas, info };
@@ -47,11 +48,20 @@ export function calcTasas(movs, ahora = Date.now()) {
 export function pronostico(items, movs, config = {}, ahora = Date.now()) {
   const { tasas, info } = calcTasas(movs, ahora);
   const auto = config.autoConsumo !== false;
-  const tasaDe = it => (tasas.get(it.id) || 0) * Math.min(3, Math.max(.3, num(it.ritmo) || 1));
+  // igual que la app: lo aprendido, mezclado con el consumo típico de la casa mientras hay pocos datos
+  const h = hogarDe(config), baseDesde = ms(config.hogarTs) || Date.parse("2026-11-09T12:00:00-03:00");
+  const cruda = it => {
+    const l = tasas.get(it.id) || 0, b = tasaBase(it, h);
+    if (!b) return l; if (!l) return b;
+    const n = (info.get(it.id)?.n || 0);
+    return n >= 6 ? l : (l * n + b * 1.5) / (n + 1.5);
+  };
+  const tasaDe = it => cruda(it) * Math.min(3, Math.max(.3, num(it.ritmo) || 1));
   const cantVista = it => {
     const q = num(it.cantidad), t = tasaDe(it);
     if (!auto || !t || it.auto === false || q <= 0 || !it.actualizado) return q;
-    return Math.max(0, +(q - t * Math.max(0, (ahora - ms(it.actualizado)) / DIA - .5)).toFixed(2));
+    const desde = !tasas.get(it.id) && tasaBase(it, h) ? Math.max(ms(it.actualizado), baseDesde) : ms(it.actualizado);
+    return Math.max(0, +(q - t * Math.max(0, (ahora - desde) / DIA - .5)).toFixed(2));
   };
   const estado = it => { const q = cantVista(it), m = num(it.minimo); return q <= 0 ? "agotado" : q <= m ? "bajo" : "ok"; };
   const pronto = items.filter(it => {

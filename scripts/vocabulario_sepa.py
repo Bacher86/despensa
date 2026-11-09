@@ -313,7 +313,7 @@ def main():
     mar = [[m, c] for m, c in marcas.most_common(3000) if c >= 3 and len(m) >= 2]
     json.dump({"fuente": "SEPA / Precios Claros (CC BY 4.0)", "fecha": date.today().isoformat(), "productos": st["productos"], "palabras": pal, "marcas": mar},
               open("datos/vocab.json", "w", encoding="utf-8"), ensure_ascii=False, separators=(",", ":"))
-    with open("datos/muestras_cadenas.txt", "w", encoding="utf-8") as f:
+    with open("/tmp/muestras_cadenas.txt", "w", encoding="utf-8") as f:
         for b, ms in sorted(muestras.items(), key=lambda x: x[0]):
             f.write(f"\n=== {b}\n" + "\n".join(ms) + "\n")
         f.write("\n=== EJEMPLOS ticket -> nombre\n" + "\n".join(f"{k} -> {nombres[v]}" for k, v in list(corto_nom.items())[:400]))

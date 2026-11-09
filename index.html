@@ -250,10 +250,11 @@ main{padding-block:12px calc(96px + env(safe-area-inset-bottom,0px))}
 .repaso-btns button{border:0;border-radius:16px;padding:16px 6px;font:700 .95rem inherit;cursor:pointer}
 .r-no{background:var(--tomate-texto,#b8431f);color:#fbfcf6}.r-poco{background:var(--mostaza);color:#23271d}.r-si{background:var(--prof);color:var(--prof-ink)}
 .repaso-fin{display:grid;gap:8px;text-align:center;padding:16px 0}.repaso-fin b{font:800 1.6rem var(--f-kai)}.repaso-fin p{margin:0}
+.hogar-box{display:grid;gap:10px}.hogar-grid{display:grid;gap:2px}.hogar-fila{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:8px 0;border-bottom:1px dashed var(--line)}.hogar-fila:last-child{border-bottom:0}.hogar-fila span{display:grid;line-height:1.2}.hogar-fila small{color:var(--muted);font-size:.8rem}.hogar-fila output{min-width:2ch;text-align:center;font-weight:700}
 .ajustes-kai{display:grid;gap:12px}.sw{display:flex;gap:10px;align-items:flex-start}.sw input{margin-top:4px;accent-color:var(--prof)}.sw span{display:grid;gap:2px}.sw small{color:var(--muted)}
 .arranque{display:grid;gap:12px;max-height:88vh;overflow:auto}
 .arr-top{display:flex;justify-content:space-between;align-items:center;color:var(--muted);font-size:.85rem}
-.sheet.arranque h3{margin:0;font:800 1.15rem/1.2 var(--f-kai);text-transform:uppercase;letter-spacing:.02em}
+.sheet.arranque h3{margin:0 0 8px;font:800 1.15rem/1.2 var(--f-kai);text-transform:uppercase;letter-spacing:.02em}
 .arr-casas{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .arr-casa{border:2px solid var(--line);background:var(--papel);border-radius:16px;padding:18px 12px;display:grid;gap:4px;text-align:left;cursor:pointer;color:var(--ink)}
 .arr-casa small{color:var(--muted)}.arr-casa[aria-pressed="true"]{border-color:var(--prof);background:var(--accent-soft)}
@@ -801,7 +802,13 @@ main h2::after{content:"";flex:1;min-width:28px;height:2px;background:var(--dash
         <p><b>Sos administrador.</b> Mirá cuántos usuarios hay, de qué barrios y cuánto usan la app.</p>
         <a class="btn" href="admin.html" target="_blank" rel="noopener">Abrir panel de administración</a>
       </div>
-      <h2 style="margin-top:6px">Cómo anotar lo que hay</h2>
+      <h2 style="margin-top:6px">Quiénes viven en la casa</h2>
+      <div class="panel hogar-box">
+        <p class="hint" style="margin:0">Con esto Kai calcula cuánto dura cada cosa desde el primer día: no come lo mismo una casa de dos que una familia con chicos.</p>
+        <div id="hogarAjustes" class="hogar-grid"></div>
+        <p class="hint" id="hogarTxt" style="margin:0"></p>
+      </div>
+      <h2>Cómo anotar lo que hay</h2>
       <div class="panel ajustes-kai">
         <div class="chips wrapchips" role="group" aria-label="Cómo anotar">
           <button class="chip" type="button" data-anotar="simple">Simple: Hay · Poco · No hay</button>
@@ -1170,6 +1177,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/13.0.0/firebas
 import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect, onAuthStateChanged, signOut, createUserWithEmailAndPassword, signInWithEmailAndPassword, sendPasswordResetEmail, updateProfile, deleteUser } from "https://www.gstatic.com/firebasejs/13.0.0/firebase-auth.js";
 import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager, collection, doc, getDoc, getDocs, onSnapshot, addDoc, updateDoc, deleteDoc, setDoc, increment, serverTimestamp, writeBatch, deleteField, arrayUnion, arrayRemove, query, where, orderBy, limit, Timestamp } from "https://www.gstatic.com/firebasejs/13.0.0/firebase-firestore.js";
 
+import { GRUPOS, hogarDe, personas, adultoEq, textoHogar, tasaBase, baseDe as consumoBaseDe } from "./consumo.js";
 const firebaseConfig = {
   apiKey: "AIzaSyDg0svGUiA37wOkrs31ROHMfx-OieBG6Xo",
   authDomain: "casa-48f64.firebaseapp.com",
@@ -1221,11 +1229,26 @@ const textoDura = d => d < 1.5 ? "menos de 2 días" : d < 13 ? `~${Math.round(d)
 const seTerminaPronto = () => items.filter(it => { const dr = diasRestan(it); return estado(it) === "ok" && dr != null && dr <= 1.5 && !it.enLista; });
 // Kai va bajando solo lo que se gasta: cantidad anotada − ritmo de la casa × días desde la última vez que alguien la tocó
 const autoOn = () => config.autoConsumo !== false;
-const tasaDe = it => (tasas.get(it.id) || 0) * Math.min(3, Math.max(.3, num(it.ritmo) || 1));
+// ritmo de cada cosa: lo aprendido de esta casa; mientras hay pocos datos, mezclado con el consumo típico
+// de una casa como esta (INDEC y otras fuentes, ver consumo.js) según quiénes viven
+const hogar = () => hogarDe(config);
+const tasaBaseDe = it => tasaBase(it, hogar());
+function tasaCruda(it) {
+  const l = tasas.get(it.id) || 0, b = tasaBaseDe(it);
+  if (!b) return l;
+  if (!l) return b;
+  const inf = tasasInfo.get(it.id) || {}, n = (inf.compras || 0) + (inf.usos || 0);
+  return n >= 6 ? l : (l * n + b * 1.5) / (n + 1.5);
+}
+const soloBase = it => !tasas.get(it.id) && !!tasaBaseDe(it);
+const tasaDe = it => tasaCruda(it) * Math.min(3, Math.max(.3, num(it.ritmo) || 1));
+// desde cuándo vale el consumo típico (para no "gastar" de golpe lo cargado antes de saber quiénes viven)
+const baseDesde = () => ms(config.hogarTs) || Date.parse("2026-11-09T12:00:00-03:00");
 function cantVista(it) {
   const q = num(it.cantidad), t = tasaDe(it);
   if (!autoOn() || !t || it.auto === false || q <= 0 || !it.actualizado) return q;
-  const dias = Math.max(0, (Date.now() - ms(it.actualizado)) / DIA - .5);   // medio día de gracia
+  const desde = soloBase(it) ? Math.max(ms(it.actualizado), baseDesde()) : ms(it.actualizado);
+  const dias = Math.max(0, (Date.now() - desde) / DIA - .5);   // medio día de gracia
   return Math.max(0, +(q - t * dias).toFixed(2));
 }
 const estimado = it => cantVista(it) < num(it.cantidad) - .001;
@@ -2262,6 +2285,7 @@ document.addEventListener("click", e => {
   else if ("arranque" in d) abrirArranque();
   else if ("ordenar" in d) abrirOrden();
   else if ("repaso" in d) abrirRepaso();
+  else if ("irhogar" in d) { lsSet("hogarAviso:" + casaId, "no"); tab = "mas"; render(); setTimeout(() => $(".hogar-box")?.scrollIntoView({ block: "center", behavior: "smooth" }), 150); }
   else if ("prontolista" in d) { const ps = seTerminaPronto(); const b = writeBatch(db); for (const it of ps) b.update(ref(it.id), { enLista: true, ...marcaAgregado() }); b.commit().then(() => toast(`${ps.length > 1 ? "Pasaron" : "Pasó"} a la lista: ${listaNombres(ps, 3)}`)).catch(er => toast("No se pudo: " + er.message)); }
   else if (d.recabrir) { lsSet("recAbierta:" + casaId, ""); abrirReceta(d.recabrir); }
 });
@@ -2360,7 +2384,7 @@ function abrir(id, pre = {}) {
 
 function historialHTML(it) {
   const mios = movs.filter(m => m.itemId === it.id);
-  const t = tasas.get(it.id), dr = diasRestan(it);
+  const t = tasaDe(it), dr = diasRestan(it);
   const precios = mios.filter(m => m.tipo === "compra" && num(m.precio));
   const etiqueta = { consumo: "Usaron", suma: "Sumaron", compra: "Compraron", ajuste: "Ajustaron" };
   return `<div class="field"><span>Historial</span>
@@ -2370,7 +2394,8 @@ function historialHTML(it) {
       <div class="stat"><small>Alcanza</small><b>${dr != null ? `~${Math.round(dr)} días` : "—"}</b></div>
       <div class="stat"><small>Último precio</small><b>${num(it.precio) ? pesos(it.precio) : "—"}</b></div>
     </div>
-    ${t ? `<p class="hint" style="margin:4px 0 0">Kai lo aprendió de ${(() => { const inf = tasasInfo.get(it.id) || {}; return [inf.compras ? `${inf.compras} compra${inf.compras > 1 ? "s" : ""}` : "", inf.usos ? `${inf.usos} uso${inf.usos > 1 ? "s" : ""}` : ""].filter(Boolean).join(" y ") || "lo que anotaron"; })()}${num(it.ritmo) && num(it.ritmo) !== 1 ? ", ajustado con tus correcciones" : ""}. Te avisa antes de que se termine.</p>`
+    ${t && tasas.get(it.id) ? `<p class="hint" style="margin:4px 0 0">Kai lo aprendió de ${(() => { const inf = tasasInfo.get(it.id) || {}; return [inf.compras ? `${inf.compras} compra${inf.compras > 1 ? "s" : ""}` : "", inf.usos ? `${inf.usos} uso${inf.usos > 1 ? "s" : ""}` : ""].filter(Boolean).join(" y ") || "lo que anotaron"; })()}${num(it.ritmo) && num(it.ritmo) !== 1 ? ", ajustado con tus correcciones" : ""}. Te avisa antes de que se termine.</p>`
+      : tasaBaseDe(it) ? `<p class="hint" style="margin:4px 0 0">Calculado para una casa de ${esc(textoHogar(hogar()))} con datos de consumo de Argentina${consumoBaseDe(it.nombre)?.est ? " (estimación)" : " (INDEC)"}. Cuando lo compren un par de veces, Kai usa lo que dura en tu casa.</p>`
       : `<p class="hint" style="margin:4px 0 0">Kai aprende cuánto les dura cuando lo compran un par de veces (con el ticket o la lista) o cuando anotan que se terminó.</p>`}
     ${precios.length > 1 ? `<p class="hint" style="margin:4px 0 0">Precio: ${precios.slice(0, 4).reverse().map(m => pesos(m.precio)).join(" → ")}${num(precios[precios.length - 1].precio) ? ` (${pct(num(precios[0].precio) / num(precios[precios.length - 1].precio) - 1, 0)})` : ""}</p>` : ""}
     <div class="hist">${mios.slice(0, 8).map(m => `<div class="hist-row"><span><b>${etiqueta[m.tipo] || m.tipo} ${fmt(Math.abs(m.delta))} ${esc(m.unidad)}</b> · ${esc((m.por || "").split(" ")[0])}</span><span>${hace(m.ts)}</span></div>`).join("") || `<div class="hist-row">Sin movimientos todavía</div>`}</div>
@@ -2977,12 +3002,11 @@ const ARRANQUE = [
   ["Detergente", "Limpieza", "Lavadero", "botella", 0, 1, 1], ["Lavandina", "Limpieza", "Lavadero", "botella", 0, 1, 1], ["Jabón para ropa", "Limpieza", "Lavadero", "paquete", 0, 1, 1],
   ["Rollo de cocina", "Limpieza", "Alacena", "rollo", 0, 2, 1], ["Bolsas de residuos", "Limpieza", "Alacena", "paquete", 0, 1, 1],
 ];
-const CASAS = [["solo", "Vivo solo/a", 1, .6], ["pareja", "Somos dos", 2, 1], ["familia", "Familia con chicos", 4, 1.8], ["compartida", "Compartimos casa", 3, 1.4]];
 const arranqueVisto = () => lsGet("arranque:" + casaId) === "1";
-let arr = { paso: 1, casa: "pareja", sel: {} };
+let arr = { paso: 1, casa: "pareja", hogar: { adultos: 2 }, sel: {} };
 function abrirArranque() {
   if (!casaId) return;
-  arr = { paso: 1, casa: config.tipoCasa || "pareja", sel: {} };
+  arr = { paso: 1, casa: config.tipoCasa || "pareja", hogar: { ...(hogarDe(config) || { adultos: 2 }) }, sel: {} };
   pintarArranque();
   if (!$("#dlgArranque").open) $("#dlgArranque").showModal();
 }
@@ -2990,8 +3014,9 @@ function pintarArranque() {
   $("#arrPaso").textContent = `${arr.paso} de 3`;
   const c = $("#arrCuerpo"); c.parentElement.scrollTop = 0;
   if (arr.paso === 1) {
-    c.innerHTML = `<h3>¿Cómo es tu casa?</h3><p class="hint">Así Kai calcula cuánto conviene tener de cada cosa.</p>
-      <div class="arr-casas">${CASAS.map(([k, t, p]) => `<button type="button" class="arr-casa" data-casa="${k}" aria-pressed="${arr.casa === k}"><b>${t}</b><small>${p === 1 ? "1 persona" : `${p}${k === "familia" ? "+" : ""} personas`}</small></button>`).join("")}</div>
+    c.innerHTML = `<h3>¿Quiénes viven en tu casa?</h3><p class="hint">Así Kai calcula cuánto dura cada cosa desde el primer día. No come lo mismo una pareja que una familia con chicos.</p>
+      <div class="hogar-grid">${htmlHogar(arr.hogar, "data-arrhogar")}</div>
+      <p class="hint" style="margin:0">${esc(textoHogar(arr.hogar))}</p>
       <button class="btn full" type="button" data-arrsig>Seguir</button>`;
     return;
   }
@@ -3012,7 +3037,7 @@ function pintarArranque() {
     <button class="btn full" type="button" data-arrfin>Empezar a usar Kai</button>`;
 }
 async function guardarArranque() {
-  const mult = (CASAS.find(x => x[0] === arr.casa) || CASAS[1])[3];
+  const mult = Math.max(.5, adultoEq(arr.hogar) / 1.76);   // los objetivos de ARRANQUE son para una pareja
   const redondeo = (v, paso) => Math.max(paso, Math.round(v / paso) * paso);
   const b = writeBatch(db);
   for (const [nombre, categoria, ubicacion, unidad, minimo, obj, paso] of ARRANQUE) {
@@ -3022,7 +3047,8 @@ async function guardarArranque() {
     b.set(doc(itemsCol()), { nombre, productoId: claveProd(nombre), codigo: "", categoria, ubicacion, unidad, cantidad: e === "hay" ? objetivo : 0, minimo: min, objetivo, paso,
       precio: 0, enLista: e === "no", enCarrito: false, ...firma() });
   }
-  b.update(casaDoc(), { tipoCasa: arr.casa });
+  const p = personas(arr.hogar);
+  b.update(casaDoc(), { hogar: arr.hogar, hogarTs: config.hogarTs || Timestamp.now(), tipoCasa: p === 1 ? "solo" : arr.hogar.chicos || arr.hogar.bebes || arr.hogar.adolescentes ? "familia" : p === 2 ? "pareja" : "compartida" });
   try { await b.commit(); } catch (er) { toast("No se pudo guardar: " + er.message); return false; }
   setTimeout(() => { for (const [nombre, categoria, , unidad] of ARRANQUE) if (arr.sel[nombre]) sumarAlCatalogo(nombre, categoria, unidad); }, 1500);
   return true;
@@ -3030,7 +3056,7 @@ async function guardarArranque() {
 $("#dlgArranque").addEventListener("click", async e => {
   const b = e.target.closest("button"); if (!b) return;
   if (b.id === "arrCerrar") { lsSet("arranque:" + casaId, "1"); $("#dlgArranque").close(); return; }
-  if (b.dataset.casa) { arr.casa = b.dataset.casa; pintarArranque(); return; }
+  if (b.dataset.arrhogar) { const k = b.dataset.arrhogar, h = { ...arr.hogar }; h[k] = Math.max(0, Math.min(15, (h[k] || 0) + Number(b.dataset.hd))); if (personas(h)) arr.hogar = h; pintarArranque(); return; }
   if (b.dataset.prod) { const k = b.dataset.prod, v = arr.sel[k]; arr.sel[k] = !v ? "hay" : v === "hay" ? "no" : ""; b.dataset.e = arr.sel[k];
     const n = Object.values(arr.sel).filter(Boolean).length, s = $("#arrCuerpo [data-arrsig]"); if (s) s.textContent = n ? `Listo (${n})` : "Saltar"; return; }
   if ("arrant" in b.dataset) { arr.paso--; pintarArranque(); return; }
@@ -3240,6 +3266,7 @@ function renderExtras() {
   const partes = [];
   const pronto = seTerminaPronto();
   if (pronto.length) partes.push(`<button class="aviso pronto-aviso" data-prontolista><span>Mañana se ${pronto.length > 1 ? "terminan" : "termina"}: ${esc(listaNombres(pronto, 3))}</span><span>A la lista →</span></button>`);
+  if (!config.hogar && items.length && lsGet("hogarAviso:" + casaId) !== "no") partes.push(`<button class="aviso info" data-irhogar><span><b>¿Quiénes viven en tu casa?</b> Así Kai calcula cuánto dura cada cosa</span><span>Contar →</span></button>`);
   if (repasoDebido()) partes.push(`<button class="aviso repaso-cta" data-repaso><span><b>Repaso de la semana</b> · 30 segundos</span><span>Empezar →</span></button>`);
   const ur = (() => { try { return JSON.parse(lsGet("recAbierta:" + casaId) || "null"); } catch { return null; } })();
   const rUlt = ur && Date.now() - ur.t < 14 * 3600000 && new Date(ur.t).getDate() === new Date().getDate() && new Date().getHours() >= 13 ? [...RECETAS, ...RECETAS_IA, ...RECETAS_COM].find(r => r.id === ur.id) : null;
@@ -3814,7 +3841,34 @@ async function atajosDeEntrada() {
   $("#dlgAtajo").showModal();
 }
 $("#atajoNo").onclick = () => $("#dlgAtajo").close();
+// quiénes viven: contadores por grupo de edad (se usa en el arranque y en Más)
+const htmlHogar = (h, attr) => GRUPOS.map(([k, t, rango]) => `<div class="hogar-fila"><span><b>${t}</b><small>${rango}</small></span>
+  <div class="step sm"><button type="button" ${attr}="${k}" data-hd="-1" aria-label="Uno menos: ${t}" ${(h[k] || 0) ? "" : "disabled"}>−</button><output>${h[k] || 0}</output><button type="button" ${attr}="${k}" data-hd="1" aria-label="Uno más: ${t}">+</button></div></div>`).join("");
+let hogarTmp = null, hogarGuardar = null;
+function pintarHogarAjustes() {
+  const el = $("#hogarAjustes"); if (!el) return;
+  const h = hogarTmp || hogar() || { adultos: 2 };
+  el.innerHTML = htmlHogar(h, "data-hogar");
+  $("#hogarTxt").textContent = config.hogar ? `${textoHogar(h)} · ${fmt(adultoEq(h))} adultos equivalentes (INDEC)` : hogar() ? `Por ahora Kai calcula para ${textoHogar(h)}. Ajustalo si no es así.` : "Tocá + y − para contarle a Kai.";
+}
+document.addEventListener("click", e => {
+  const b = e.target.closest("[data-hogar]"); if (!b) return;
+  const h = { ...(hogarTmp || hogar() || { adultos: 2 }) }, k = b.dataset.hogar;
+  h[k] = Math.max(0, Math.min(15, (h[k] || 0) + Number(b.dataset.hd)));
+  if (!personas(h)) return;
+  hogarTmp = h; pintarHogarAjustes();
+  clearTimeout(hogarGuardar);
+  hogarGuardar = setTimeout(() => {
+    const nuevo = hogarTmp; hogarTmp = null;
+    const extra = config.hogarTs ? {} : { hogarTs: Timestamp.now() };
+    Object.assign(config, { hogar: nuevo }, extra);
+    updateDoc(casaDoc(), { hogar: nuevo, ...extra })
+      .then(() => toast("✓ Listo: Kai recalcula cuánto dura cada cosa")).catch(er => toast("No se pudo guardar: " + er.message));
+    render();
+  }, 900);
+});
 function pintarAjustesKai() {
+  pintarHogarAjustes();
   for (const b of document.querySelectorAll("[data-anotar]")) b.setAttribute("aria-pressed", (config.anotar || "simple") === b.dataset.anotar);
   const c = $("#chkAuto"); if (c) c.checked = autoOn();
 }
@@ -4318,75 +4372,17 @@ async function prepararImagen(file) {
   return { canvas: c, url: c.toDataURL("image/jpeg", 0.7), angulo: ang };
 }
 
-/* lectura del texto del ticket */
-const RE_PRECIO = /(-?\$?\s?\d{1,3}(?:[.\s]\d{3})*[.,]\d{2}|-?\d+[.,]\d{2})\s*[A-Za-z*]?\s*$/;
-const RE_CANT = /^\s*(\d+(?:[.,]\d{1,3})?)\s*(kgs?|k|un|u|unid|uni|unidades)?\.?\s*[xX*]\s*\$?\s*(\d[\d.,]*)/i;
-const IGNORAR = /total|sub ?total|i\.?v\.?a|cuit|tarjeta|vuelto|efectivo|cambio|pago|debito|credito|cajer|^caja|ticket|factura|fecha|hora|cliente|consumidor|cant\.? ?art|articulos|items|ahorr|bonif|redondeo|saldo|punto|gracias|cuota|visa|master|mercado ?pago|cae|vto|ingresos brutos|domicilio|telefono|inicio act|resp\.? ?insc|monotrib|precio unit|importe|recargo/i;
-const parsePrecio = s => { s = String(s).replace(/[$\s]/g, ""); s = /,\d{2}$/.test(s) ? s.replace(/\./g, "").replace(",", ".") : s.replace(/,/g, ""); return parseFloat(s) || 0; };
-const parseCant = s => parseFloat(String(s).replace(",", ".")) || 1;
-// el lector a veces mete un dígito de más adelante del precio ("17.450,00" en vez de "7.450,00")
-const sinPrimerDigito = v => { const e = Math.floor(v), s = String(e); return s.length >= 4 ? parseFloat(s.slice(1)) + (v - e) : null; };
-const cerca = (a, b) => Math.abs(a - b) <= Math.max(1, b * 0.01);
-
-function leerTicket(texto) {
-  // errores típicos de lectura dentro de los números: 2.89%0,00 -> 2.890,00 · 1.2O0,00 -> 1.200,00
-  const arreglar = l => l.replace(/(\d)[%'`"´°*]+(?=[\d.,])/g, "$1").replace(/(?<=\d[.,]?)[Oo](?=[\d.,])/g, "0").replace(/(?<=\d[.,]?)[lI|](?=[\d.,])/g, "1").replace(/(\d[.,])[Oo]{2}$/, "$100").replace(/(\d)\s+([.,]\d{2})$/, "$1$2");
-  const lineas = texto.split(/\n/).map(l => arreglar(l.replace(/[|_~=]+/g, " ").replace(/\s+/g, " ").trim())).filter(Boolean);
-  const filas = []; let total = 0;
-  for (const l of lineas) {
-    const n = normal(l);
-    if (/\btotal\b/.test(n) && !/sub ?total/.test(n)) { const m = l.match(RE_PRECIO); if (m) total = Math.max(total, parsePrecio(m[1])); continue; }
-    // renglón de cantidad: "2 x 1.390,00", "2 UN x 1.390,00", "1,235 kg x 2.400,00 /kg"
-    const qc = l.match(RE_CANT);
-    const letras = (l.replace(RE_CANT, "").replace(/\/?\s*\b(kgs?|un|u|unid|c\/u|x)\b\.?/gi, "").match(/[a-zA-ZáéíóúñÑ]/g) || []).length;
-    if (qc && letras < 3) { filas.push({ tipo: "cant", cant: parseCant(qc[1]), precio: parsePrecio(qc[3]), kg: /^k/i.test(qc[2] || "") || /[.,]\d{3}$/.test(qc[1]) }); continue; }
-    const mp = l.match(RE_PRECIO);
-    if (!mp) continue;
-    const importe = parsePrecio(mp[1]);
-    let desc = l.slice(0, mp.index);
-    if (IGNORAR.test(n) || importe <= 0) { filas.push({ tipo: "corte" }); continue; }
-    let inl = null;
-    const mi = desc.match(/(\d+(?:[.,]\d{1,3})?)\s*(kgs?|k|un|u)?\s*[xX*]\s*\$?\s*([\d.,]+)\s*$/i);
-    if (mi) { inl = { cant: parseCant(mi[1]), precio: parsePrecio(mi[3]), kg: /^k/i.test(mi[2] || "") || /[.,]\d{3}$/.test(mi[1]) }; desc = desc.slice(0, mi.index); }
-    desc = desc.replace(/^\s*\d{4,}\s*/, "").replace(/\(\s*\d+[.,]?\d*\s*\)/g, " ").replace(/\s+\d+[.,]\d+\s*%?\s*$/, "").replace(/\s+/g, " ").trim();
-    if ((desc.match(/[a-zA-ZáéíóúñÑ]/g) || []).length < 3) continue;
-    filas.push({ tipo: "prod", desc, importe, q: inl });
-  }
-  // cada renglón de cantidad va con el producto de abajo (Coto, Día) o el de arriba (otros súper):
-  // elegimos el que cuadra con cantidad × precio; si ninguno cuadra, el de abajo
-  for (let i = 0; i < filas.length; i++) {
-    const c = filas[i]; if (c.tipo !== "cant") continue;
-    const sig = filas[i + 1]?.tipo === "prod" && !filas[i + 1].q ? filas[i + 1] : null;
-    const ant = filas[i - 1]?.tipo === "prod" && !filas[i - 1].q ? filas[i - 1] : null;
-    const esp = c.cant * c.precio;
-    const cuadra = p => p && (cerca(p.importe, esp) || (sinPrimerDigito(p.importe) != null && cerca(sinPrimerDigito(p.importe), esp)));
-    const p = cuadra(sig) ? sig : cuadra(ant) ? ant : sig;
-    if (p) p.q = c;
-  }
-  const res = [];
-  for (const f of filas) {
-    if (f.tipo !== "prod") continue;
-    let { importe } = f, cant = 1, kg = false;
-    if (f.q) {
-      cant = f.q.cant; kg = f.q.kg;
-      const esp = f.q.cant * f.q.precio, alt = sinPrimerDigito(importe);
-      if (esp > 0 && !cerca(importe, esp) && alt != null && cerca(alt, esp)) importe = Math.round(esp * 100) / 100;
-    }
-    res.push({ desc: f.desc, importe, cant: kg ? Math.round(cant * 1000) / 1000 : Math.max(1, Math.round(cant)), kg, _q: !!f.q });
-  }
-  // si la suma no da el total, buscamos uno o dos precios con un dígito de más que lo expliquen
-  const suma = () => res.reduce((s, r) => s + r.importe, 0);
-  if (total > 0 && !cerca(suma(), total)) {
-    const cand = res.map((r, i) => [i, sinPrimerDigito(r.importe)]).filter(([i, a]) => a != null && !res[i]._q);
-    const dif = suma() - total;
-    let hecho = false;
-    for (const [i, a] of cand) if (Math.abs(res[i].importe - a - dif) < 0.5) { res[i].importe = a; hecho = true; break; }
-    if (!hecho) for (let x = 0; x < cand.length && !hecho; x++) for (let y = x + 1; y < cand.length; y++) {
-      const [i, a] = cand[x], [j, b] = cand[y];
-      if (Math.abs(res[i].importe - a + res[j].importe - b - dif) < 0.5) { res[i].importe = a; res[j].importe = b; hecho = true; break; }
-    }
-  }
-  return { renglones: res.map(({ _q, ...r }) => r), total };
+/* lectura del texto del ticket: ticket.js (formatos de cada súper) + datos/tickets.json (vocabulario armado con la base SEPA) */
+let lectorTicket = null;
+function cargarLector() {
+  if (!lectorTicket) lectorTicket = (async () => {
+    const L = await import("./ticket.js");
+    const json = u => fetch(u).then(r => r.ok ? r.json() : null).catch(() => null);
+    const [tk, vo] = await Promise.all([json("datos/tickets.json"), json("datos/vocab.json")]);
+    let eanDic = null;
+    return { ...L, dic: L.armarDiccionario(tk, vo), ean: async () => eanDic ||= await json("datos/ean.json") };
+  })().catch(e => { lectorTicket = null; throw e; });
+  return lectorTicket;
 }
 
 // limpia la descripción del ticket para compararla con la despensa
@@ -4408,7 +4404,27 @@ function emparejar(desc) {
   }
   return ms0 >= 0.6 ? mejor.id : "";
 }
-const nombreDesdeTicket = d => capitalizar(limpiarDesc(d).replace(/\b(kgs?|kg|un|unid|u|x)\b/g, " ").replace(/\s+/g, " ").trim()).slice(0, 50);
+
+// con la IA activada, Gemini lee el ticket de la foto (mucho mejor con fotos movidas o tickets gastados)
+async function leerTicketIA(file) {
+  const modelos = await prepararIA(), img = await fotoABase64(file);
+  const prompt = `Es la foto de un ticket de supermercado de Argentina. Leé cada producto comprado.
+- Los precios usan punto para miles y coma para decimales (1.234,56).
+- La cantidad puede estar en un renglón aparte, arriba o abajo del producto ("2 x 1.390,00", "0,765 kg x 4.999,00").
+- Si hay un descuento (renglón con monto negativo, "Dto", "Promo", "Bonif"), restáselo al producto que corresponde.
+- No incluyas subtotal, total, IVA, impuestos, medios de pago, vuelto ni datos del comercio.
+- "desc" es el texto tal cual está en el ticket; "nombre" es cómo lo llamaría una persona en Argentina, sin tamaño ni envase (ej: "GALL OREO X118G" -> "Galletitas Oreo").
+Respondé solo este JSON: {"comercio":"Coto","total":12345.67,"productos":[{"desc":"...","nombre":"...","cantidad":1,"kg":false,"importe":1234.5}]}`;
+  let resp, ultimo;
+  for (const m of modelos) {
+    try { resp = await conTiempo(m.generateContent([prompt, { inlineData: { data: img.data, mimeType: "image/jpeg" } }]), 45000); break; }
+    catch (er) { ultimo = er; if (!/not.?found|404|not supported|unknown model/i.test(String(er?.message))) break; }
+  }
+  if (!resp) throw ultimo;
+  const j = leerJSON(resp.response.text());
+  const renglones = (j?.productos || []).filter(p => p?.desc && num(p.importe) > 0).map(p => ({ desc: String(p.desc).slice(0, 60), nombre: String(p.nombre || "").slice(0, 48), importe: num(p.importe), kg: !!p.kg, cant: p.kg ? num(p.cantidad) || 1 : Math.max(1, Math.round(num(p.cantidad) || 1)), ean: null }));
+  return { renglones, total: num(j?.total), cadena: j?.comercio || null, url: img.url };
+}
 
 let ticketRes = [], ticketTotal = 0, comercioTicket = "Supermercado";
 $("#ticketInput").addEventListener("change", e => { const f = e.target.files[0]; e.target.value = ""; if (f) cargarTicket(f); });
@@ -4420,31 +4436,47 @@ async function cargarTicket(file) {
   est.innerHTML = barra("Preparando la foto…");
   if (!$("#dlgTicket").open) $("#dlgTicket").showModal();
   try {
+    if (IA_ACTIVADA) {
+      est.innerHTML = barra("Leyendo el ticket…");
+      try {
+        const r = await leerTicketIA(file);
+        if (r.renglones.length) { $("#tkPrev").src = r.url; mostrarTicketLeido(r.renglones, r.total, r.cadena, null, null); return; }
+      } catch (e) { console.warn("IA ticket:", e?.message || e); }
+    }
     const img = await prepararImagen(file);
     $("#tkPrev").src = img.url;
     ocrProgreso = m => {
       if (m.status === "recognizing text") est.innerHTML = barra(`Leyendo el ticket… ${Math.round((m.progress || 0) * 100)}%`);
       else if (/loading|initializ/.test(m.status || "")) est.innerHTML = barra("Preparando el lector (la primera vez tarda un poco más)…");
     };
-    const w = await prepararOCR();
+    const [w, L] = await Promise.all([prepararOCR(), cargarLector()]);
     const { data } = await w.recognize(img.canvas);
-    const { renglones, total } = leerTicket(data.text || "");
+    const texto = data.text || "";
+    const { renglones, total } = L.leerTicket(texto);
+    const cadena = L.cadenaDe(texto);
     ticketTotal = total;
     if (!renglones.length) {
       est.innerHTML = `<div class="lookup no"><span><b>No pude leer productos en el ticket.</b> Probá con más luz, el ticket estirado y la foto bien de frente, que entre entero.</span></div>`;
       return;
     }
-    ticketRes = renglones.map(r => {
-      const destino = emparejar(r.desc);
-      return { ...r, destino, nombre: destino ? items.find(i => i.id === destino).nombre : nombreDesdeTicket(r.desc), ok: true };
-    });
-    const sum = ticketRes.reduce((s, r) => s + r.importe, 0);
-    est.innerHTML = `<div class="lookup ok"><span><b>Leí ${ticketRes.length} producto${ticketRes.length > 1 ? "s" : ""}.</b><small>Revisá que esté bien: podés corregir nombres, cantidades y a qué producto se suma.</small></span></div>`;
-    elegirComercioTicket(config.ultimoComercio || "Supermercado");
-    pintarTicket();
-    void sum;
+    const eanDic = renglones.some(r => r.ean) ? await L.ean() : null;
+    mostrarTicketLeido(renglones, total, cadena, L, eanDic);
   } catch (er) {
     est.innerHTML = `<div class="lookup no"><span><b>No se pudo leer el ticket.</b> ${/fetch|network|load/i.test(String(er?.message)) ? "La primera vez hace falta internet para bajar el lector." : esc(String(er?.message || er).slice(0, 120))}</span></div>`;
+  }
+}
+function mostrarTicketLeido(renglones, total, cadena, L, eanDic) {
+  const est = $("#tkEstado");
+  ticketTotal = total;
+  {
+    ticketRes = renglones.map(r => {
+      const n = r.nombre ? { nombre: r.nombre, completo: r.nombre } : L.nombrar(r.desc, L.dic, eanDic, r.ean);
+      const destino = emparejar(r.desc) || emparejar(n.completo) || emparejar(n.nombre);
+      return { ...r, destino, nombre: destino ? items.find(i => i.id === destino).nombre : n.nombre, ok: true };
+    });
+    est.innerHTML = `<div class="lookup ok"><span><b>Leí ${ticketRes.length} producto${ticketRes.length > 1 ? "s" : ""}${cadena ? ` del ticket de ${esc(cadena)}` : ""}.</b><small>Revisá que esté bien: podés corregir nombres, cantidades y a qué producto se suma.</small></span></div>`;
+    elegirComercioTicket(config.ultimoComercio || "Supermercado");
+    pintarTicket();
   }
 }
 
