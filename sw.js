@@ -1,6 +1,6 @@
 // Service worker: permite instalar la app y abrirla rápido (y sin señal).
 // Si cambiás index.html, subí también este archivo con VERSION nueva para que los teléfonos se actualicen.
-const VERSION = "despensa-v38";
+const VERSION = "despensa-v40";
 const APP = ["./", "./index.html", "./recetas.js", "./ticket.js", "./consumo.js", "./manifest.webmanifest", "./icon.svg", "./icon-192.png", "./icon-512.png", "./apple-touch-icon.png"];
 
 // Librerías externas que conviene guardar en el teléfono (Firebase, fuentes, escáner)
@@ -65,21 +65,81 @@ self.addEventListener("fetch", e => {
 self.addEventListener("push", e => {
   let d = {};
   try { const j = e.data?.json() || {}; d = j.data || j.notification || j; } catch { d = { body: e.data?.text() }; }
+  const actions = d.tipo === "pregunta" ? [{ action: "ok", title: "Queda" }, { action: "agotado", title: "Se terminó" }]
+    : d.tipo === "comida" && d.receta ? [{ action: "si", title: "Sí, eso" }, { action: "otra", title: "Otra cosa" }] : [];
   e.waitUntil(self.registration.showNotification(d.title || "Kai", {
-    body: d.body || "", tag: d.tag || undefined, renotify: !!d.tag, icon: "icon-192.png", badge: "icon-192.png",
-    data: { tab: d.tab || "despensa" },
+    body: d.body || "", tag: d.tag || undefined, renotify: !!d.tag, icon: "icon-192.png", badge: "icon-192.png", actions,
+    data: { ...d, tab: d.tab || "despensa" },
   }));
 });
 
-// Tocar un aviso abre la app en la pestaña que corresponde
+// ---- contestar la pregunta del día desde el aviso, sin abrir la app ----
+// Usa la sesión de Firebase que la app ya dejó guardada en el teléfono y escribe directo en Firestore.
+const FB_KEY = "AIzaSyDg0svGUiA37wOkrs31ROHMfx-OieBG6Xo";
+const FS = "https://firestore.googleapis.com/v1/";
+const DOCS = "projects/casa-48f64/databases/default/documents";
+function sesionFirebase() {
+  return new Promise((ok, mal) => {
+    const r = indexedDB.open("firebaseLocalStorageDb");
+    r.onerror = () => mal(r.error);
+    r.onsuccess = () => {
+      try {
+        const tx = r.result.transaction("firebaseLocalStorage", "readonly"), q = tx.objectStore("firebaseLocalStorage").getAll();
+        q.onsuccess = () => { const u = (q.result || []).map(x => x.value).find(v => v && v.stsTokenManager); u ? ok(u) : mal(new Error("sin sesión")); };
+        q.onerror = () => mal(q.error);
+      } catch (er) { mal(er); }
+    };
+  });
+}
+async function tokenFirebase() {
+  const u = await sesionFirebase(), t = u.stsTokenManager;
+  if (t.accessToken && t.expirationTime > Date.now() + 60000) return { token: t.accessToken, u };
+  const r = await fetch(`https://securetoken.googleapis.com/v1/token?key=${FB_KEY}`, { method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" }, body: "grant_type=refresh_token&refresh_token=" + encodeURIComponent(t.refreshToken) });
+  if (!r.ok) throw new Error("no se pudo renovar la sesión");
+  return { token: (await r.json()).id_token, u };
+}
+const valor = v => typeof v === "boolean" ? { booleanValue: v } : typeof v === "number" ? (Number.isInteger(v) ? { integerValue: String(v) } : { doubleValue: v }) : { stringValue: String(v) };
+async function responderDesdeAviso(d, est) {
+  const r = JSON.parse(d.r || "{}")[est]; if (!r || !d.casa || !d.item) throw new Error("faltan datos");
+  const { token, u } = await tokenFirebase();
+  const por = u.displayName || u.email || "";
+  const campos = { cantidad: r.cantidad, por, ...(r.minimo != null ? { minimo: r.minimo } : {}), ...(r.enLista != null ? { enLista: r.enLista } : {}), ...(r.ritmo != null ? { ritmo: r.ritmo } : {}) };
+  const casa = `${DOCS}/hogar/${d.casa}`;
+  const writes = [
+    { update: { name: `${casa}/items/${d.item}`, fields: Object.fromEntries(Object.entries(campos).map(([k, v]) => [k, valor(v)])) }, updateMask: { fieldPaths: Object.keys(campos) },
+      updateTransforms: [{ fieldPath: "actualizado", setToServerValue: "REQUEST_TIME" }], currentDocument: { exists: true } },
+    { update: { name: casa, fields: { pregunta: { mapValue: { fields: { resp: { booleanValue: true }, por: { stringValue: por }, est: { stringValue: est } } } } } }, updateMask: { fieldPaths: ["pregunta.resp", "pregunta.por", "pregunta.est"] } },
+  ];
+  if (r.delta) writes.push({ update: { name: `${casa}/movimientos/${crypto.randomUUID().replace(/-/g, "").slice(0, 20)}`, fields: Object.fromEntries(Object.entries({ itemId: d.item, nombre: d.nombre || "", unidad: d.unidad || "", delta: r.delta, tipo: r.delta < 0 ? "consumo" : "suma", por, estado: est, aviso: true }).map(([k, v]) => [k, valor(v)])) },
+    updateTransforms: [{ fieldPath: "ts", setToServerValue: "REQUEST_TIME" }], currentDocument: { exists: false } });
+  const res = await fetch(`${FS}${DOCS}:commit`, { method: "POST", headers: { Authorization: "Bearer " + token, "Content-Type": "application/json" }, body: JSON.stringify({ writes }) });
+  if (!res.ok) throw new Error("Firestore " + res.status);
+}
+
+// Tocar un aviso (o uno de sus botones) abre la app donde corresponde
+async function abrir(url) {
+  const abiertas = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
+  for (const c of abiertas) { if ("focus" in c) { await c.navigate?.(url).catch(() => {}); return c.focus(); } }
+  return self.clients.openWindow(url);
+}
 self.addEventListener("notificationclick", e => {
   e.notification.close();
-  const tab = e.notification.data?.tab || "despensa";
-  const url = new URL("./?tab=" + tab, self.registration.scope).href;
+  const d = e.notification.data || {}, act = e.action;
+  const url = q => new URL("./?" + q, self.registration.scope).href;
   e.waitUntil((async () => {
-    const abiertas = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
-    for (const c of abiertas) { if ("focus" in c) { await c.navigate?.(url).catch(() => {}); return c.focus(); } }
-    return self.clients.openWindow(url);
+    if (d.tipo === "pregunta") {
+      if (act === "ok" || act === "agotado") {
+        const nom = String(d.nombre || "").toLowerCase();
+        try {
+          await responderDesdeAviso(d, act);
+          return self.registration.showNotification(act === "ok" ? `✓ Anotado: queda ${nom}` : `✓ Anotado: se terminó ${nom}`, {
+            body: act === "ok" ? "Gracias. Kai ajusta cuánto les dura." : "Pasó a la lista del súper.", tag: "pregunta", icon: "icon-192.png", badge: "icon-192.png", data: { tab: act === "ok" ? "despensa" : "lista" } });
+        } catch { return abrir(url(`accion=pregunta&item=${encodeURIComponent(d.item)}&est=${act}`)); }
+      }
+      return abrir(url(`accion=pregunta&item=${encodeURIComponent(d.item || "")}`));
+    }
+    if (d.tipo === "comida") return abrir(url(act === "si" && d.receta ? `accion=comida&receta=${encodeURIComponent(d.receta)}&hice=1` : "accion=comida"));
+    return abrir(url("tab=" + (d.tab || "despensa")));
   })());
 });
 

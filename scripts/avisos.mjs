@@ -4,6 +4,8 @@
 //  · "Uriel agregó leche a la lista" (a los demás de la casa)
 //  · "Mañana se termina el café" (según lo que Kai aprendió que dura cada cosa) · una vez por día, 10 h
 //  · "El yogur vence mañana"                                                     · una vez por día, 10 h
+//  · "¿Queda yerba?" una vez por día, con botones para contestar desde el aviso (a la hora que elige cada uno, 11 h si no)
+//  · "¿Qué comieron hoy?" para descontar lo que se cocinó (21 h si no eligió otra hora)
 //  · el resumen, los días y a la hora que eligió cada uno (por defecto domingos 19 h):
 //    "¿Revisamos la despensa?" si hace días que no se hace el repaso, o lo que falta y lo que vence
 import { initializeApp, cert } from "firebase-admin/app";
@@ -72,7 +74,32 @@ export function pronostico(items, movs, config = {}, ahora = Date.now()) {
     const q = info.get(it.id)?.qProm || num(it.objetivo) || num(it.paso) || 1;
     return { ...it, dura: q / tasaDe(it) };
   });
-  return { pronto, estado, cantVista };
+  // la pregunta del día: lo que Kai calcula que se está terminando, o lo que hace mucho nadie mira
+  const candidatos = () => items.map(it => {
+    const s = estado(it), t = tasaDe(it), dr = t ? cantVista(it) / t : null, quieto = (ahora - ms(it.actualizado || 0)) / DIA;
+    const estim = cantVista(it) !== num(it.cantidad);
+    let pts = -1;
+    if (it.enCarrito || it.enLista === true) pts = -1;
+    else if (estim && s !== "ok") pts = 100 - (dr ?? 0);
+    else if (dr != null && dr <= 7) pts = 60 - dr;
+    else if (s === "ok" && quieto > 21) pts = 20 + Math.min(20, quieto / 7);
+    return { it, pts, s, dr, quieto: Math.floor(quieto) };
+  }).filter(x => x.pts > 0).sort((a, b) => b.pts - a.pts);
+  // qué guardar según lo que contesten (igual que "Hay · Poco · No hay" en la app, con el aprendizaje del ritmo)
+  const respuestas = it => {
+    const m = num(it.minimo), paso = num(it.paso) || 1, q = cantVista(it), obj = num(it.objetivo), orden = { ok: 2, bajo: 1, agotado: 0 };
+    const out = {};
+    for (const est of ["ok", "bajo", "agotado"]) {
+      const d = est === "agotado" ? { cantidad: 0 } : est === "bajo" ? (m > 0 ? { cantidad: m } : { cantidad: paso, minimo: paso })
+        : { cantidad: estado(it) === "ok" ? q : Math.max(obj > m ? obj : 0, m + paso, num(it.cantidad) > m ? num(it.cantidad) : 0, paso), enLista: false };
+      const dif = orden[est] - orden[estado(it)];
+      if (tasas.get(it.id) && q !== num(it.cantidad) && dif) d.ritmo = +Math.min(3, Math.max(.3, (num(it.ritmo) || 1) * (dif > 0 ? .75 : 1.3))).toFixed(2);
+      d.delta = +(d.cantidad - q).toFixed(3);
+      out[est] = d;
+    }
+    return out;
+  };
+  return { pronto, estado, cantVista, candidatos, respuestas };
 }
 const textoDura = d => d < 1.5 ? "menos de 2 días" : d < 13 ? `~${Math.round(d)} días` : d < 45 ? `~${Math.round(d / 7)} semana${Math.round(d / 7) > 1 ? "s" : ""}` : `~${Math.round(d / 30)} mes${Math.round(d / 30) > 1 ? "es" : ""}`;
 // fecha y hora de Argentina (UTC−3, sin horario de verano)
@@ -127,7 +154,39 @@ async function main() {
       }
     }
 
-    // 3) resumen: a cada uno, los días y la hora que eligió
+    // 3) pregunta del día y "¿qué comieron hoy?": a cada uno a la hora que eligió
+    const hoyPreg = config.pregunta?.fecha === ar.fecha ? config.pregunta : null;
+    const quierePreg = miembros.filter(m => { const h = m.diario?.pregunta === undefined ? 11 : m.diario.pregunta; return h != null && ar.hora >= h && !enviados[`${casa.id}:preg:${m.uid}:${ar.fecha}`]; });
+    if (quierePreg.length && !hoyPreg?.resp) {
+      let preg = hoyPreg;
+      if (!preg) {
+        const items = itemsCasa || (itemsCasa = (await casa.ref.collection("items").get()).docs.map(d => ({ id: d.id, ...d.data() })));
+        const movs = (await casa.ref.collection("movimientos").where("ts", ">=", Timestamp.fromMillis(ahora - 90 * DIA)).get()).docs.map(d => d.data());
+        const P = pronostico(items, movs, config, ahora);
+        const ya = new Set(Object.keys(enviados).filter(k => k.startsWith(casa.id + ":pregitem:")).map(k => k.split(":")[2]));
+        const c = P.candidatos().find(x => !ya.has(x.it.id));
+        if (c) {
+          preg = { item: c.it.id, nombre: c.it.nombre, fecha: ar.fecha, resp: false, motivo: c.s !== "ok" ? "calc" : c.dr != null && c.dr <= 7 ? "pronto" : "quieto", dias: c.quieto, r: P.respuestas(c.it) };
+          enviados[`${casa.id}:pregitem:${c.it.id}`] = ahora;
+          await casa.ref.update({ pregunta: preg }).catch(e => console.log("pregunta:", e.message));
+        }
+      }
+      if (preg) {
+        for (const m of quierePreg) enviados[`${casa.id}:preg:${m.uid}:${ar.fecha}`] = ahora;
+        avisos.push({ title: `¿Queda ${minus(preg.nombre)}?`, tipo: "pregunta",
+          body: preg.motivo === "calc" ? "Kai calcula que se está terminando. Contestá desde acá." : preg.motivo === "pronto" ? "Kai calcula que se termina esta semana. Contestá desde acá." : `Hace ${preg.dias} días que nadie lo revisa. Contestá desde acá.`,
+          tab: "despensa", tag: "pregunta", extra: { casa: casa.id, item: preg.item, nombre: preg.nombre, unidad: "", r: JSON.stringify(preg.r) }, solo: new Set(quierePreg.map(m => m.uid)) });
+      }
+    }
+    const quiereComida = miembros.filter(m => { const h = m.diario?.comida === undefined ? 21 : m.diario.comida; return h != null && ar.hora >= h && m.comidaResp !== ar.fecha && !enviados[`${casa.id}:comida:${m.uid}:${ar.fecha}`]; });
+    if (quiereComida.length) {
+      const sug = config.sugerida && (Date.parse(ar.fecha) - Date.parse(config.sugerida.fecha || "2000-01-01")) / DIA <= 1 ? config.sugerida : null;
+      for (const m of quiereComida) enviados[`${casa.id}:comida:${m.uid}:${ar.fecha}`] = ahora;
+      avisos.push({ title: "¿Qué comieron hoy?", tipo: "comida", body: sug ? `¿Hicieron ${minus(sug.n)}? Contale a Kai y descuenta lo que usaron.` : "Contale a Kai qué cocinaron y descuenta lo que usaron.",
+        tab: "despensa", tag: "comida", extra: sug ? { receta: sug.id, nreceta: sug.n } : {}, solo: new Set(quiereComida.map(m => m.uid)) });
+    }
+
+    // 4) resumen: a cada uno, los días y la hora que eligió
     const resumenPara = miembros.filter(m => {
       const c = m.resumen || { dias: [0], hora: 19 };
       return Array.isArray(c.dias) && c.dias.includes(ar.dia) && ar.hora >= (c.hora ?? 19) && !enviados[`${casa.id}:resumen:${m.uid}:${ar.fecha}`];
@@ -149,7 +208,7 @@ async function main() {
         if (a.solo && !a.solo.has(m.uid)) continue;
         const r = await fcm.sendEachForMulticast({
           tokens: m.fcm.slice(-5),
-          data: { title: a.title.slice(0, 120), body: a.body, tab: a.tab, tag: a.tag },
+          data: { title: a.title.slice(0, 120), body: a.body, tab: a.tab, tag: a.tag, ...(a.tipo ? { tipo: a.tipo } : {}), ...(a.extra || {}) },
           webpush: { headers: { Urgency: "high", TTL: String(20 * 3600) } },
         });
         total += r.successCount;
