@@ -15,7 +15,7 @@ service cloud.firestore {
     function nuevo() { return request.resource.data; }
 
     // Versión de estas reglas: la app de administración la consulta para saber si están publicadas.
-    match /reglas/{version} { allow get: if version == 'v8'; }
+    match /reglas/{version} { allow get: if version == 'v9'; }
     match /admin/{doc} { allow read: if esAdmin(); }
 
     match /usuarios/{uid} {
@@ -99,6 +99,7 @@ service cloud.firestore {
 
     match /{ruta=**}/items/{id} { allow read: if esAdmin(); }
     match /{ruta=**}/compras/{id} { allow read: if esAdmin(); }
+    match /{ruta=**}/miembros/{uid} { allow read: if esAdmin(); }
 
     match /hogar/{casa} {
       allow list: if esAdmin();
