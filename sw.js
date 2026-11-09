@@ -1,6 +1,6 @@
 // Service worker: permite instalar la app y abrirla rápido (y sin señal).
 // Si cambiás index.html, subí también este archivo con VERSION nueva para que los teléfonos se actualicen.
-const VERSION = "despensa-v40";
+const VERSION = "despensa-v41";
 const APP = ["./", "./index.html", "./recetas.js", "./ticket.js", "./consumo.js", "./manifest.webmanifest", "./icon.svg", "./icon-192.png", "./icon-512.png", "./apple-touch-icon.png"];
 
 // Librerías externas que conviene guardar en el teléfono (Firebase, fuentes, escáner)
@@ -26,7 +26,7 @@ self.addEventListener("fetch", e => {
       const c = await caches.open("kai-compartido");
       await c.delete("foto"); await c.delete("texto");
       const foto = fd.get("foto");
-      if (foto && foto.size) await c.put("foto", new Response(foto, { headers: { "content-type": foto.type || "image/jpeg" } }));
+      if (foto && foto.size) await c.put("foto", new Response(foto, { headers: { "content-type": foto.type || (/\.pdf$/i.test(foto.name || "") ? "application/pdf" : "image/jpeg"), "x-nombre": encodeURIComponent(foto.name || "") } }));
       const texto = [fd.get("titulo"), fd.get("texto"), fd.get("link")].filter(x => x && String(x).trim()).join("\n");
       if (texto) await c.put("texto", new Response(texto));
       return Response.redirect(new URL("./?compartido=1", self.registration.scope).href, 303);

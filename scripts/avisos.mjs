@@ -182,7 +182,7 @@ async function main() {
     if (quiereComida.length) {
       const sug = config.sugerida && (Date.parse(ar.fecha) - Date.parse(config.sugerida.fecha || "2000-01-01")) / DIA <= 1 ? config.sugerida : null;
       for (const m of quiereComida) enviados[`${casa.id}:comida:${m.uid}:${ar.fecha}`] = ahora;
-      avisos.push({ title: "¿Qué comieron hoy?", tipo: "comida", body: sug ? `¿Hicieron ${minus(sug.n)}? Contale a Kai y descuenta lo que usaron.` : "Contale a Kai qué cocinaron y descuenta lo que usaron.",
+      avisos.push({ title: "¿Qué comieron hoy?", tipo: "comida", body: sug ? (sug.menu ? `Hoy tocaba ${minus(sug.n)} en el menú. ¿Lo hicieron? Kai descuenta lo que usaron.` : `¿Hicieron ${minus(sug.n)}? Contale a Kai y descuenta lo que usaron.`) : "Contale a Kai qué cocinaron y descuenta lo que usaron.",
         tab: "despensa", tag: "comida", extra: sug ? { receta: sug.id, nreceta: sug.n } : {}, solo: new Set(quiereComida.map(m => m.uid)) });
     }
 

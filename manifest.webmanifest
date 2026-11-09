@@ -42,7 +42,11 @@
         {
           "name": "foto",
           "accept": [
-            "image/*"
+            "image/*",
+            "application/pdf",
+            "text/plain",
+            ".pdf",
+            ".txt"
           ]
         }
       ]
