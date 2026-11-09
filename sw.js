@@ -1,6 +1,6 @@
 // Service worker: permite instalar la app y abrirla rápido (y sin señal).
 // Si cambiás index.html, subí también este archivo con VERSION nueva para que los teléfonos se actualicen.
-const VERSION = "despensa-v41";
+const VERSION = "despensa-v42";
 const APP = ["./", "./index.html", "./recetas.js", "./ticket.js", "./consumo.js", "./manifest.webmanifest", "./icon.svg", "./icon-192.png", "./icon-512.png", "./apple-touch-icon.png"];
 
 // Librerías externas que conviene guardar en el teléfono (Firebase, fuentes, escáner)
@@ -112,6 +112,8 @@ async function responderDesdeAviso(d, est) {
   ];
   if (r.delta) writes.push({ update: { name: `${casa}/movimientos/${crypto.randomUUID().replace(/-/g, "").slice(0, 20)}`, fields: Object.fromEntries(Object.entries({ itemId: d.item, nombre: d.nombre || "", unidad: d.unidad || "", delta: r.delta, tipo: r.delta < 0 ? "consumo" : "suma", por, estado: est, aviso: true }).map(([k, v]) => [k, valor(v)])) },
     updateTransforms: [{ fieldPath: "ts", setToServerValue: "REQUEST_TIME" }], currentDocument: { exists: false } });
+  const d0 = new Date(), dia = `${d0.getFullYear()}-${String(d0.getMonth() + 1).padStart(2, "0")}-${String(d0.getDate()).padStart(2, "0")}`;
+  writes.push({ transform: { document: `${DOCS}/metricas/${dia}`, fieldTransforms: [{ fieldPath: "preguntas", increment: { integerValue: "1" } }] } });
   const res = await fetch(`${FS}${DOCS}:commit`, { method: "POST", headers: { Authorization: "Bearer " + token, "Content-Type": "application/json" }, body: JSON.stringify({ writes }) });
   if (!res.ok) throw new Error("Firestore " + res.status);
 }

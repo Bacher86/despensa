@@ -139,6 +139,12 @@ async function main() {
     }
     for (const [q, ns] of porQuien) avisos.push({ title: `${q} agregó ${minus(listar(ns))} a la lista`, body: "Tocá para ver la lista del súper.", tab: "lista", tag: "lista-agregado", salvo: q });
 
+    // 1b) alguien avisó que va al súper
+    if (config.voy && ms(config.voy.ts) > desde && !enviados[`${casa.id}:voy:${ms(config.voy.ts)}`]) {
+      enviados[`${casa.id}:voy:${ms(config.voy.ts)}`] = ahora;
+      avisos.push({ title: `${primer(config.voy.nombre) || "Alguien"} va al súper`, body: "¿Falta algo? Sumalo a la lista y le aparece.", tab: "lista", tag: "voy", salvo: primer(config.voy.nombre), salvoUid: config.voy.uid });
+    }
+
     // 2) lo que se termina mañana y lo que vence mañana (una vez por día)
     if (diario) {
       const items = itemsCasa = (await casa.ref.collection("items").get()).docs.map(d => ({ id: d.id, ...d.data() }));
@@ -205,6 +211,7 @@ async function main() {
     for (const a of avisos) {
       for (const m of miembros) {
         if (a.salvo && primer(m.nombre) === a.salvo) continue;
+        if (a.salvoUid && m.uid === a.salvoUid) continue;
         if (a.solo && !a.solo.has(m.uid)) continue;
         const r = await fcm.sendEachForMulticast({
           tokens: m.fcm.slice(-5),

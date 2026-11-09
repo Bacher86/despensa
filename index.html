@@ -134,6 +134,11 @@ main{padding-block:12px calc(96px + env(safe-area-inset-bottom,0px))}
 .tk-orig{font-size:.75rem;color:var(--muted);font-family:ui-monospace,Menlo,monospace;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .tk-pie{display:grid;gap:10px}
 /* logros */
+.sin-senal{position:sticky;top:0;z-index:30;background:#2b2f22;color:#fbfcf6;border-radius:12px;padding:10px 14px;margin:8px 0;font-size:.9rem;font-weight:600}
+.vista-aj{display:grid;gap:4px}.sw-fila{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:8px 0}.sw-fila span{display:grid;gap:2px}.sw-fila small{color:var(--muted);font-size:.82rem}.sw-fila input{width:24px;height:24px;flex:none;accent-color:var(--accent)}
+html.letra-grande{font-size:118%}html.letra-grande .tri button,html.letra-grande .preg-btns button{min-height:54px;font-size:1rem}
+body.modo-simple [data-tab="cocinar"],body.modo-simple [data-tab="gastos"],body.modo-simple .ad-slot,body.modo-simple #adBarra,body.modo-simple .racha,body.modo-simple .semana,body.modo-simple #btnScan,body.modo-simple #btnFoto,body.modo-simple .orden-link{display:none!important}
+body.modo-simple nav.tabs .wrap{grid-template-columns:repeat(3,1fr)!important}body.modo-simple [data-comida],body.modo-simple [data-recabrir]{display:none!important}
 .racha{display:flex;gap:14px;align-items:center;background:var(--ink);color:var(--bg);border-radius:14px;padding:14px 16px}
 .racha-n{font:800 2.6rem/1 var(--f-display)}
 .racha span:last-child{display:grid;gap:2px}
@@ -250,6 +255,13 @@ main{padding-block:12px calc(96px + env(safe-area-inset-bottom,0px))}
 .repaso-btns button{border:0;border-radius:16px;padding:16px 6px;font:700 .95rem inherit;cursor:pointer}
 .r-no{background:var(--tomate-texto,#b8431f);color:#fbfcf6}.r-poco{background:var(--mostaza);color:#23271d}.r-si{background:var(--prof);color:var(--prof-ink)}
 .repaso-fin{display:grid;gap:8px;text-align:center;padding:16px 0}.repaso-fin b{font:800 1.6rem var(--f-kai)}.repaso-fin p{margin:0}
+body.modo-chico #btnBorrar,body.modo-chico #frmRenombrar,body.modo-chico #btnInvitar,body.modo-chico #invBox,body.modo-chico .hogar-box,body.modo-chico [data-borrarmenu],body.modo-chico [data-cortarlink],body.modo-chico #btnLinkLista{display:none!important}
+.racha{display:flex;gap:10px;align-items:center;flex-wrap:wrap;background:linear-gradient(90deg,#fff3dc,var(--surface));border:1px solid #f1d39a;border-radius:16px;padding:10px 14px}.racha small{color:var(--muted);margin-left:auto}.racha.pendiente{background:var(--surface);border-color:var(--line)}.racha-fuego{font-size:1.3rem}
+@media (prefers-color-scheme:dark){.racha{background:var(--surface);border-color:#5a4a28}}
+.sheet.mes{display:grid;gap:12px}.mes-stats{display:grid;grid-template-columns:1fr 1fr;gap:8px}.mes-stats div{display:grid;gap:2px;background:var(--bg);border-radius:12px;padding:12px}.mes-stats b{font:800 1.6rem var(--f-display)}.mes-stats span{font-size:.82rem;color:var(--muted)}.sheet.mes p{margin:0}
+.actividad{display:grid;gap:0;padding-top:4px;padding-bottom:4px}.ev{display:flex;gap:10px;align-items:center;padding:9px 0;border-bottom:1px dashed var(--line)}.ev:last-child{border-bottom:0}.ev>div{display:grid;gap:1px;min-width:0}.ev small{color:var(--muted);font-size:.78rem}.ev .avatar{width:30px;height:30px;border-radius:50%;display:grid;place-items:center;flex:none;background:var(--accent-soft);font-weight:800;font-size:.85rem}
+.member-acc{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}.chico-aviso{margin:0;background:var(--accent-soft);padding:10px 12px;border-radius:10px}
+.voy-cta{display:flex;gap:12px;align-items:center;background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:12px 14px;margin-bottom:12px}.voy-cta>span{font-size:1.4rem}.voy-cta>div{display:grid;gap:2px;flex:1;min-width:0}.voy-cta>div span{font-size:.85rem;color:var(--muted)}.voy-cta .btn{flex:none}.voy-cta.otro{background:var(--accent-soft);border-color:transparent}
 .hogar-box{display:grid;gap:10px}.hogar-grid{display:grid;gap:2px}.hogar-fila{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:8px 0;border-bottom:1px dashed var(--line)}.hogar-fila:last-child{border-bottom:0}.hogar-fila span{display:grid;line-height:1.2}.hogar-fila small{color:var(--muted);font-size:.8rem}.hogar-fila output{min-width:2ch;text-align:center;font-weight:700}
 .diario-aj{display:grid;gap:4px;padding-bottom:12px;border-bottom:1px dashed var(--line)}.diario-fila{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:6px 0}.diario-fila span{display:grid;gap:2px;line-height:1.25}.diario-fila small{color:var(--muted);font-size:.8rem}.diario-fila select{flex:none;width:auto;min-width:124px;padding:10px 12px;border-radius:10px;border:1px solid var(--line);background:var(--bg)}
 .preg-dia{display:grid;gap:10px;background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:14px 14px 12px}.preg-top{display:flex;justify-content:space-between;align-items:baseline;gap:10px}.preg-top small{color:var(--muted);font-size:.78rem;font-weight:700;text-transform:uppercase;letter-spacing:.04em}.preg-dia h4{margin:0;font-size:1.15rem}.preg-dia p{margin:0;color:var(--muted);font-size:.88rem}.preg-btns{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}.preg-btns button{min-height:48px;border-radius:12px;border:1px solid var(--line);background:var(--bg);font:inherit;font-weight:700;color:var(--ink);cursor:pointer}.preg-btns [data-preg="ok"]{background:var(--prof);border-color:var(--prof);color:var(--prof-ink)}.preg-btns [data-preg="bajo"]{background:var(--mostaza);border-color:var(--mostaza);color:#23271d}.preg-btns [data-preg="agotado"]{background:var(--tomate-texto,#b8431f);border-color:transparent;color:#fbfcf6}
@@ -771,6 +783,7 @@ main h2::after{content:"";flex:1;min-width:28px;height:2px;background:var(--dash
   </header>
 
   <main class="wrap">
+    <div class="sin-senal" id="sinSenal" role="status" hidden>📶 Sin señal: lo que anotes se guarda en el teléfono y se sube solo cuando vuelva.</div>
     <div class="err" id="appErr" hidden></div>
 
     <section id="v-despensa">
@@ -820,6 +833,16 @@ main h2::after{content:"";flex:1;min-width:28px;height:2px;background:var(--dash
         <div id="hogarAjustes" class="hogar-grid"></div>
         <p class="hint" id="hogarTxt" style="margin:0"></p>
       </div>
+      <h2>Cómo se ve</h2>
+      <div class="panel vista-aj">
+        <label class="sw-fila"><span><b>Letra grande</b><small>Todo más grande y fácil de leer</small></span><input type="checkbox" id="chkLetra"></label>
+        <label class="sw-fila"><span><b>Modo simple</b><small>Solo la despensa y la lista, con Hay · Poco · No hay. Ideal para abuelos o para quien recién empieza</small></span><input type="checkbox" id="chkSimple"></label>
+      </div>
+      <h2>Bajar la despensa</h2>
+      <div class="panel">
+        <p style="margin:0">Una planilla con todo lo que tienen cargado: cantidades, lo que falta y lo que vence. Se abre con Excel o Google Sheets.</p>
+        <button class="btn ghost" type="button" id="btnExportar">Bajar planilla (Excel)</button>
+      </div>
       <h2>Cómo anotar lo que hay</h2>
       <div class="panel ajustes-kai">
         <div class="chips wrapchips" role="group" aria-label="Cómo anotar">
@@ -862,9 +885,13 @@ main h2::after{content:"";flex:1;min-width:28px;height:2px;background:var(--dash
       <h2>Tu casa</h2>
       <div class="panel">
         <form class="inline" id="frmRenombrar"><input id="casaNombre" aria-label="Nombre de la casa" autocomplete="off"><button class="btn ghost sm" type="submit">Renombrar</button></form>
+        <p class="hint chico-aviso" id="chicoAviso" hidden>Estás en <b>modo chico</b>: podés sumar cosas a la lista, anotar lo que hay y contestar las preguntas. Borrar y cambiar la casa lo hacen los grandes.</p>
         <div class="members-tit"><b id="miembrosTit">Quiénes están en la casa</b><small>Todos los que entraron a esta casa con su cuenta de Kai</small></div>
         <div id="miembros" class="members"></div>
       </div>
+      <h2>Lo que pasó en la casa</h2>
+      <div class="panel actividad" id="actividad"></div>
+      <div class="actions" style="margin-top:0"><button class="btn ghost" data-resumenmes="0">Resumen de este mes</button><button class="btn ghost" data-resumenmes="1">Del mes pasado</button></div>
       <h2>Invitar a la familia</h2>
       <div class="panel">
         <p>Mandá este link por WhatsApp. Quien lo abra crea su cuenta (con Google o con mail) y queda adentro de la casa. Vale 30 días; si generás uno nuevo, el anterior deja de andar.</p>
@@ -996,6 +1023,14 @@ main h2::after{content:"";flex:1;min-width:28px;height:2px;background:var(--dash
     <div class="repaso-top"><b>Repaso de la semana</b><span id="repasoPaso"></span><button class="x" type="button" id="repasoCerrar" aria-label="Cerrar">×</button></div>
     <div class="repaso-barra"><i id="repasoBarra"></i></div>
     <div id="repasoCarta"></div>
+  </div>
+</dialog>
+<dialog id="dlgMes">
+  <div class="sheet mes">
+    <h3 id="mesTit">Tu mes en Kai</h3>
+    <div id="mesCuerpo"></div>
+    <button class="btn" type="button" id="mesCompartir">Compartir mi mes</button>
+    <button class="linkbtn" type="button" onclick="this.closest('dialog').close()" style="justify-self:center">Cerrar</button>
   </div>
 </dialog>
 <dialog id="dlgComida">
@@ -1650,7 +1685,7 @@ function registrarVisita() {
   if (!user) return;
   const k = "visto:" + user.uid, hoy = new Date().toISOString().slice(0, 10);
   if (lsGet(k) === hoy) return;
-  lsSet(k, hoy);
+  lsSet(k, hoy); medir("aperturas");
   const plataforma = /android/i.test(navigator.userAgent) ? "android" : esIOS() ? "ios" : "compu";
   setDoc(perfilRef(), { visto: serverTimestamp(), plataforma, instalada: yaInstalada() }, { merge: true }).catch(() => {});
 }
@@ -1774,6 +1809,7 @@ function entrarCasa(id) {
   }, sinAcceso));
   subs.push(onSnapshot(collection(db, "hogar", id, "miembros"), s => {
     miembros = s.docs.map(d => ({ id: d.id, ...d.data(opt) })).sort((a, b) => ms(a.desde) - ms(b.desde));
+    aplicarModoChico();
     renderCasa();
   }, sinAcceso));
 }
@@ -1830,7 +1866,48 @@ if ("serviceWorker" in navigator) addEventListener("load", () => navigator.servi
 
 /* ---------- pestaña Más: casa, familia, invitación ---------- */
 let quitarId = null, confirmDejar = false;
+// lo que pasó en la casa: arma frases a partir de los movimientos (quién compró, usó, cocinó, anotó)
+function eventosCasa(dias = 7, max = 25) {
+  const desde = Date.now() - dias * DIA, grupos = [];
+  const lista = movs.filter(m => ms(m.ts) > desde).sort((a, b) => ms(b.ts) - ms(a.ts));
+  for (const m of lista) {
+    const quienEs = primerDe(m.por) || "Alguien";
+    const tipo = m.receta ? "receta:" + m.receta : m.estado ? "estado:" + m.estado : m.tipo === "compra" ? "compra" : m.delta < 0 ? "uso" : "suma";
+    const g = grupos.find(x => x.quien === quienEs && x.tipo === tipo && Math.abs(x.t - ms(m.ts)) < 20 * 60000);
+    if (g) { if (!g.nombres.includes(m.nombre)) g.nombres.push(m.nombre); continue; }
+    grupos.push({ quien: quienEs, tipo, t: ms(m.ts), nombres: [m.nombre], receta: m.receta });
+  }
+  for (const it of items) if (it.agregadoTs && ms(it.agregadoTs) > desde && it.agregadoPor) {
+    const g = grupos.find(x => x.quien === it.agregadoPor && x.tipo === "lista" && Math.abs(x.t - ms(it.agregadoTs)) < 60 * 60000);
+    if (g) g.nombres.push(it.nombre); else grupos.push({ quien: it.agregadoPor, tipo: "lista", t: ms(it.agregadoTs), nombres: [it.nombre] });
+  }
+  const ns = g => listaNombres(g.nombres.map(n => ({ nombre: n })), 3);
+  return grupos.sort((a, b) => b.t - a.t).slice(0, max).map(g => ({ ...g, texto:
+    g.tipo.startsWith("receta:") ? `cocinó ${String(g.receta).toLowerCase()}`
+    : g.tipo === "estado:agotado" ? `anotó que se terminó ${ns(g)}`
+    : g.tipo === "estado:bajo" ? `anotó que queda poco: ${ns(g)}`
+    : g.tipo === "estado:ok" ? `confirmó que hay ${ns(g)}`
+    : g.tipo === "compra" ? (g.nombres.length > 3 ? `hizo la compra: ${g.nombres.length} productos` : `compró ${ns(g)}`)
+    : g.tipo === "uso" ? `usó ${ns(g)}`
+    : g.tipo === "lista" ? `sumó a la lista ${ns(g)}`
+    : `sumó ${ns(g)} a la despensa` }));
+}
+const haceCuanto = t => { const m = Math.floor((Date.now() - t) / 60000); return m < 2 ? "recién" : m < 60 ? `hace ${m} min` : m < 24 * 60 ? `hace ${Math.floor(m / 60)} h` : Math.floor(m / 1440) === 1 ? "ayer" : `hace ${Math.floor(m / 1440)} días`; };
+function pintarActividad() {
+  const el = $("#actividad"); if (!el) return;
+  const ev = eventosCasa();
+  el.innerHTML = ev.length ? ev.map(e => `<div class="ev"><span class="avatar" aria-hidden="true">${esc(e.quien[0] || "?").toUpperCase()}</span><div><span><b>${esc(e.quien)}</b> ${esc(e.texto)}</span><small>${haceCuanto(e.t)}</small></div></div>`).join("")
+    : `<p class="hint" style="margin:0">Todavía no pasó nada esta semana. Cuando alguien compre, use o anote algo, aparece acá.</p>`;
+}
+const primerDe = n => String(n || "").trim().split(/\s+/)[0] || "";
+const soyChico = () => miembros.find(m => m.id === user?.uid)?.rol === "chico";
+function aplicarModoChico() {
+  const c = soyChico();
+  document.body.classList.toggle("modo-chico", c);
+  $("#chicoAviso").hidden = !c;
+}
 function renderCasa() {
+  aplicarModoChico(); pintarActividad();
   const inp = $("#casaNombre");
   if (document.activeElement !== inp) inp.value = config.nombre || "";
   const soyAdmin = config.creador === user?.uid;
@@ -1841,7 +1918,7 @@ function renderCasa() {
     <div class="member"><span class="avatar" aria-hidden="true">${esc((m.nombre || "?").trim()[0] || "?").toUpperCase()}</span><div><span class="row-name">${esc(m.nombre || "Sin nombre")}${m.id === user.uid ? " (vos)" : ""}</span>
       <span class="row-meta envuelve">${[m.id === config.creador ? "Creó la casa" : ms(m.desde) ? "Entró el " + fechaCorta(m.desde) : "", usado(m), m.fcm?.length ? "avisos activados" : ""].filter(Boolean).join(" · ")}</span>
       ${m.email ? `<span class="row-meta">${esc(m.email)}</span>` : ""}</div>
-      ${soyAdmin && m.id !== user.uid ? `<button class="btn ghost sm" data-quitar="${m.id}">${quitarId === m.id ? "Confirmar" : "Quitar"}</button>` : ""}
+      ${soyAdmin && m.id !== user.uid ? `<div class="member-acc"><button class="btn ghost sm" data-chico="${m.id}" aria-pressed="${m.rol === "chico"}">${m.rol === "chico" ? "Modo chico ✓" : "Modo chico"}</button><button class="btn ghost sm" data-quitar="${m.id}">${quitarId === m.id ? "Confirmar" : "Quitar"}</button></div>` : m.rol === "chico" ? `<span class="pill">Modo chico</span>` : ""}
     </div>`).join("");
   const c = config.invitacion;
   $("#invBox").innerHTML = c ? `<div class="inv-link">${esc(linkInv(c))}</div>
@@ -1870,6 +1947,8 @@ $("#frmRenombrar").addEventListener("submit", async e => {
   await b.commit(); $("#casaNombre").blur(); toast("Nombre guardado");
 });
 document.addEventListener("click", async e => {
+  const ch = e.target.closest("[data-chico]");
+  if (ch) { const m = miembros.find(x => x.id === ch.dataset.chico); if (m) updateDoc(doc(db, "hogar", casaId, "miembros", m.id), { rol: m.rol === "chico" ? "miembro" : "chico" }).then(() => toast(m.rol === "chico" ? `${primerDe(m.nombre)} ya no está en modo chico` : `✓ ${primerDe(m.nombre)} está en modo chico: puede sumar a la lista y contestar, pero no borrar`)).catch(er => toast("No se pudo: " + er.message)); return; }
   const t = e.target.closest("[data-quitar],[data-copiarinv]"); if (!t) return;
   if ("copiarinv" in t.dataset) {
     try { await navigator.clipboard.writeText(linkInv(config.invitacion)); toast("Link copiado"); } catch { toast("No se pudo copiar, mantené apretado el link"); }
@@ -1935,7 +2014,7 @@ function renderDespensa() {
   }).join("");
 }
 
-const simple = () => config.anotar !== "exacto";
+const simple = () => document.body.classList.contains("modo-simple") || config.anotar !== "exacto";
 function rowStock(it) {
   const s = estado(it), dr = diasRestan(it);
   const dura = s === "agotado" ? (estimado(it) ? "Kai calcula que se terminó" : "no queda") : dr != null ? (dr < 1 ? (estimado(it) ? "Kai calcula que se terminó" : "se acaba hoy") : `alcanza ~${Math.round(dr)} día${Math.round(dr) === 1 ? "" : "s"}`)
@@ -2067,7 +2146,7 @@ function renderLista() {
   fin.disabled = !enCarro;
   fin.textContent = enCarro ? `Terminar compra (${enCarro} en el carrito)` : "Marcá lo que compraste";
   $("#btnWa").href = "https://wa.me/?text=" + encodeURIComponent(textoLista());
-  $("#superBox").innerHTML = lista.length || enCurso() ? bannerSuper() : "";
+  $("#superBox").innerHTML = lista.length || enCurso() ? bannerSuper() : bannerVoy();
 
   if (!lista.length) {
     $("#compra").innerHTML = `<div class="empty"><strong>No falta nada</strong><span>Cuando algo llegue a su mínimo aparece acá solo, con la cantidad a comprar.</span></div>`;
@@ -2284,6 +2363,26 @@ $("#cComercios").addEventListener("click", e => { const t = e.target.closest("[d
 const ref = id => doc(itemsCol(), id);
 const quien = () => user?.displayName || user?.email || "";
 const firma = () => ({ actualizado: serverTimestamp(), por: quien() });
+/* ---------- métricas de uso (contadores por día, sin datos personales) y errores para el panel ---------- */
+const APP_VER = "2026-11-09";
+function estadoSenal(volvio) {
+  $("#sinSenal").hidden = navigator.onLine;
+  if (volvio && navigator.onLine && user) toast("✓ Volvió la señal: se sube lo que anotaste");
+}
+addEventListener("offline", () => estadoSenal(false));
+addEventListener("online", () => estadoSenal(true));
+setTimeout(() => estadoSenal(false), 0);
+function medir(k) { if (!user) return; const d = new Date(), f = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`; setDoc(doc(db, "metricas", f), { [k]: increment(1) }, { merge: true }).catch(() => {}); }
+const errVistos = new Set();
+function reportarError(msg, stack) {
+  const m = String(msg || "").slice(0, 300), st = String(stack || "");
+  if (!user || !m || errVistos.size >= 5 || errVistos.has(m)) return;
+  if (/ResizeObserver|Script error|chrome-extension|moz-extension|safari-extension|Load failed|NetworkError|Failed to fetch|AbortError/i.test(m + st)) return;
+  errVistos.add(m);
+  addDoc(collection(db, "errores"), { msg: m, stack: st.slice(0, 1800), url: (location.pathname + location.search).slice(0, 120), ua: navigator.userAgent.slice(0, 220), uid: user.uid, casa: casaId || "", tab: typeof tab === "string" ? tab : "", ver: APP_VER, ts: serverTimestamp() }).catch(() => {});
+}
+addEventListener("error", e => reportarError(e.message, e.error?.stack || `${e.filename}:${e.lineno}`));
+addEventListener("unhandledrejection", e => reportarError("Promesa: " + (e.reason?.message || e.reason), e.reason?.stack));
 const logMov = (b, it, delta, tipo, extra = {}) => b.set(doc(movsCol()), { itemId: it.id, nombre: it.nombre, unidad: it.unidad || "", delta, tipo, ts: serverTimestamp(), por: quien(), ...extra });
 
 // Hay · Poco · No hay. Si contradice lo que Kai calculaba, ajusta el ritmo de ese producto
@@ -2656,6 +2755,7 @@ function resaltar(nombre) {
   fila.classList.add("recien"); setTimeout(() => fila.classList.remove("recien"), 2200);
 }
 $("#btnBorrar").onclick = async () => {
+  if (soyChico()) { toast("En modo chico no se pueden borrar productos"); return; }
   if (!confirmDel) { confirmDel = true; $("#btnBorrar").textContent = "Tocá de nuevo para eliminar"; return; }
   await deleteDoc(ref(editId)); $("#dlg").close(); toast("Eliminado");
 };
@@ -2747,6 +2847,7 @@ let fotoModo = "sumar", fotoRes = [];
 $("#btnFoto").onclick = () => $("#fotoInput").click();
 $("#btnFoto").hidden = !iaOn();
 $("#fotoInput").addEventListener("change", async e => {
+  medir("heladera");
   const file = e.target.files[0]; e.target.value = "";
   if (!file) return;
   fotoRes = [];
@@ -3352,7 +3453,7 @@ function preguntaHoy() {
 async function responderPregunta(id, est) {
   const it = items.find(i => i.id === id); if (!it) return;
   const hoy = fechaHoy();
-  lsSet(`preg:${casaId}:${hoy}`, est);
+  lsSet(`preg:${casaId}:${hoy}`, est); medir("preguntas");
   const b = writeBatch(db);
   if (estado(it) === est && !estimado(it)) b.update(ref(id), firma());      // lo confirmó: Kai sabe que está al día
   else await ponerEstado(id, est, b);
@@ -3367,6 +3468,7 @@ document.addEventListener("click", e => {
 });
 const comidaPendiente = () => { const c = diarioCfg(); return c.comida != null && items.length > 0 && new Date().getHours() >= c.comida && !lsGet(`comida:${casaId}:${fechaHoy()}`); };
 function marcarComida(como) {
+  medir("comidas");
   lsSet(`comida:${casaId}:${fechaHoy()}`, como);
   if (casaId && user) updateDoc(doc(db, "hogar", casaId, "miembros", user.uid), { comidaResp: fechaHoy() }).catch(() => {});
 }
@@ -3517,6 +3619,9 @@ const resumenVisible = () => {
 function renderExtras() {
   const partes = [];
   if (cargado && recetasCargadas) sugerirDelDia();
+  partes.push(htmlRacha());
+  if (new Date().getDate() <= 5 && movs.some(m => { const d = new Date(ms(m.ts)), h = new Date(); h.setDate(1); h.setMonth(h.getMonth() - 1); return d.getMonth() === h.getMonth(); }) && lsGet("mesVisto:" + casaId) !== String(new Date().getMonth()))
+    partes.push(`<button class="aviso info" data-resumenmes="1" onclick="localStorage.setItem('mesVisto:${casaId}','${new Date().getMonth()}')"><span><b>Tu ${new Date(new Date().setMonth(new Date().getMonth() - 1)).toLocaleDateString("es-AR", { month: "long" })} en Kai</b> · el resumen del mes</span><span>Ver →</span></button>`);
   const pq = preguntaHoy();
   if (pq) partes.push(`<div class="preg-dia"><div class="preg-top"><small>Pregunta del día</small><small>1 toque</small></div>
     <h4>¿Queda ${esc(pq.it.nombre.toLowerCase())}?</h4>
@@ -3545,6 +3650,8 @@ function renderExtras() {
   }
   const v = porVencer(3);
   if (v.length) partes.push(`<button class="aviso info" data-goto="cocinar"><span>${v.length === 1 ? `${esc(v[0].nombre)} ${textoVence(diasVence(v[0]))}` : `${v.length} productos vencen pronto: ${esc(listaNombres(v, 2))}`}</span><span>Recetas →</span></button>`);
+  const voy = voyActivo();
+  if (voy && voy.uid !== user?.uid && !enCurso()) partes.push(`<button class="aviso super" data-goto="lista"><span>${esc(voy.nombre)} va al súper</span><span>¿Falta algo? →</span></button>`);
   const sup = enCurso();
   if (sup && sup.uid !== user?.uid) partes.push(`<button class="aviso super" data-goto="lista"><span>${esc(sup.nombre)} está en el súper ahora</span><span>¿Falta algo? →</span></button>`);
   $("#extraBox").innerHTML = partes.join("");
@@ -3577,9 +3684,21 @@ document.addEventListener("click", e => {
   if (e.target.closest("[data-empezarsuper]")) empezarSuper();
   if (e.target.closest("[data-salirsuper]")) { terminarSuper(); toast("Saliste del modo súper"); }
 });
+// "¿Quién va al súper?": alguien avisa que va (antes de estar ahí) y los demás suman lo que falte
+const voyActivo = () => { const v = config.voy; return v && Date.now() - ms(v.ts) < 8 * 3600000 ? v : null; };
+function bannerVoy() {
+  const v = voyActivo(); if (enCurso()) return "";
+  if (!v) return `<div class="voy-cta"><span>🛒</span><div><b>¿Quién va al súper?</b><span>Avisale a la casa que vas y sumen lo que falte antes de que salgas.</span></div><button class="btn sm" data-voy>Voy yo</button></div>`;
+  if (v.uid === user?.uid) return `<div class="voy-cta mio"><span>🛒</span><div><b>Avisaste que vas al súper</b><span>La casa ya sabe. Lo que sumen aparece en esta lista.</span></div><button class="btn ghost sm" data-novoy>Ya no voy</button></div>`;
+  return `<div class="voy-cta otro"><span>🛒</span><div><b>${esc(v.nombre)} va al súper</b><span>¿Falta algo? Sumalo abajo y le aparece en su lista.</span></div></div>`;
+}
+document.addEventListener("click", e => {
+  if (e.target.closest("[data-voy]")) { medir("voyAlSuper"); updateDoc(casaDoc(), { voy: { uid: user.uid, nombre: primerNombre(), ts: Timestamp.now() } }).then(() => toast("✓ Le avisamos a la casa que vas al súper")).catch(er => toast("No se pudo: " + er.message)); }
+  if (e.target.closest("[data-novoy]")) updateDoc(casaDoc(), { voy: deleteField() }).catch(() => {});
+});
 function bannerSuper() {
   const c = enCurso();
-  if (!c) return `<div class="super-cta"><div><b>¿Vas al súper?</b><span>Activá el modo súper: la pantalla no se apaga y si alguien de la casa agrega algo, te aparece al instante.</span></div><button class="btn sm" data-empezarsuper>Estoy en el súper</button></div>`;
+  if (!c) return bannerVoy() + `<div class="super-cta"><div><b>¿Vas al súper?</b><span>Activá el modo súper: la pantalla no se apaga y si alguien de la casa agrega algo, te aparece al instante.</span></div><button class="btn sm" data-empezarsuper>Estoy en el súper</button></div>`;
   if (c.uid === user?.uid) return `<div class="super-on"><span class="pulso" aria-hidden="true"></span><div><b>Estás en el súper</b><span>Lo que agreguen los demás te aparece acá al momento.</span></div><button class="btn ghost sm" data-salirsuper>Salir</button></div>`;
   return `<div class="super-on otro"><span class="pulso" aria-hidden="true"></span><div><b>${esc(c.nombre)} está en el súper</b><span>Lo que agregues ahora le aparece al instante en su lista.</span></div></div>`;
 }
@@ -3606,7 +3725,11 @@ function revisarCambios(nuevos, primeraVez) {
   antesEstado = new Map(nuevos.map(i => [i.id, estado(i)]));
   antesLista = new Set(nuevos.filter(enLista).map(i => i.id));
 }
+let antesVoy;
 function revisarCasa() {
+  const v = voyActivo(), vk = v ? v.uid + ms(v.ts) : null;
+  if (vk && antesVoy !== undefined && vk !== antesVoy && v.uid !== user?.uid) notificar(`${v.nombre} va al súper`, "¿Falta algo? Sumalo a la lista y le aparece.", "voy", "lista");
+  antesVoy = vk;
   const c = enCurso();
   const uid = c?.uid || null;
   if (uid && uid !== antesSuper && uid !== user?.uid && antesSuper !== undefined)
@@ -4061,7 +4184,7 @@ async function responderRepaso(est) {
   repasoRes[est]++;
   const b = writeBatch(db);
   await ponerEstado(it.id, est, b);
-  if (repasoK === repasoCola.length - 1) b.update(casaDoc(), { repasoUlt: serverTimestamp() });
+  if (repasoK === repasoCola.length - 1) { b.update(casaDoc(), { repasoUlt: serverTimestamp() }); medir("repasos"); }
   b.commit().catch(e => toast("No se pudo guardar: " + e.message));
   repasoK++; pintarRepaso();
 }
@@ -4152,6 +4275,30 @@ document.addEventListener("click", e => {
     render();
   }, 900);
 });
+// vista: letra grande y modo simple (se guarda en este teléfono)
+function aplicarVista() {
+  const letra = lsGet("vista:letra") === "1", simple = lsGet("vista:simple") === "1";
+  document.documentElement.classList.toggle("letra-grande", letra);
+  document.body.classList.toggle("modo-simple", simple);
+  if ($("#chkLetra")) { $("#chkLetra").checked = letra; $("#chkSimple").checked = simple; }
+  if (simple && ["cocinar", "gastos"].includes(tab)) { tab = "despensa"; }
+}
+$("#chkLetra").addEventListener("change", e => { lsSet("vista:letra", e.target.checked ? "1" : "0"); aplicarVista(); });
+$("#chkSimple").addEventListener("change", e => { lsSet("vista:simple", e.target.checked ? "1" : "0"); aplicarVista(); toast(e.target.checked ? "Modo simple: solo la despensa y la lista" : "Volviste a la vista completa"); });
+aplicarVista();
+// planilla de la despensa (CSV con ; que Excel en español abre directo)
+$("#btnExportar").onclick = () => {
+  const filas = [["Producto", "Categoría", "Ubicación", "Cantidad", "Unidad", "Mínimo", "Estado", "En la lista", "Vence", "Última vez que se anotó", "Quién"]];
+  const est = { ok: "Hay", bajo: "Queda poco", agotado: "No hay" };
+  for (const it of [...items].sort((a, b) => (a.categoria || "").localeCompare(b.categoria || "", "es") || a.nombre.localeCompare(b.nombre, "es")))
+    filas.push([it.nombre, it.categoria || "", it.ubicacion || "", String(cantVista(it)).replace(".", ","), it.unidad || "", String(num(it.minimo)).replace(".", ","), est[estado(it)], enLista(it) ? "Sí" : "No", it.vence || "", ms(it.actualizado) ? new Date(ms(it.actualizado)).toLocaleDateString("es-AR") : "", it.por || ""]);
+  const csv = "\ufeff" + filas.map(f => f.map(v => `"${String(v ?? "").replace(/"/g, '""')}"`).join(";")).join("\r\n");
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
+  a.download = `kai-${normal(config.nombre || "despensa").replace(/\s+/g, "-")}-${new Date().toISOString().slice(0, 10)}.csv`;
+  a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 3000);
+  toast("✓ Planilla bajada");
+};
 function pintarAjustesKai() {
   pintarHogarAjustes();
   for (const b of document.querySelectorAll("[data-anotar]")) b.setAttribute("aria-pressed", (config.anotar || "simple") === b.dataset.anotar);
@@ -4429,7 +4576,7 @@ $("#dlgReceta").addEventListener("click", e => {
       logMov(b, x.it, -x.c, "consumo", { receta: recAbierta.rec.n, ...(dv != null && dv <= 3 ? { aprovecho: true } : {}) });
       if (estado(x.it) === "ok" && estado({ ...x.it, cantidad: num(x.it.cantidad) - x.c }) !== "ok") bajan.push(x.it.nombre);
     }
-    if (!usados.length) logMov(b, { id: "-", nombre: recAbierta.rec.n, unidad: "" }, 0, "receta", { receta: recAbierta.rec.n });
+    if (!usados.length) logMov(b, { id: "-", nombre: recAbierta.rec.n, unidad: "" }, 0, "receta", { receta: recAbierta.rec.n }); medir("recetas");
     b.commit().catch(er => toast("No se pudo guardar: " + er.message));
     $("#dlgReceta").close();
     toast(`✓ ¡Buen provecho!${usados.length ? ` Descontamos ${usados.length} producto${usados.length > 1 ? "s" : ""}` : ""}${bajan.length ? `. Pasó a la lista: ${bajan.join(", ")}` : ""}`);
@@ -4726,7 +4873,9 @@ async function cargarArchivoTicket(f) {
   if (/^text\//.test(tipo) || /\.txt$/i.test(nom)) return cargarTicketTexto(await f.text());
   return cargarTicket(f);
 }
+let ticketDigital = false;
 async function cargarTicketTexto(texto) {
+  ticketDigital = true;
   ticketRes = []; ticketTotal = 0;
   $("#tkLista").innerHTML = ""; $("#tkAcc").hidden = true; $("#tkPie").hidden = true; $("#tkPrev").removeAttribute("src");
   const est = $("#tkEstado");
@@ -4887,6 +5036,7 @@ $("#ticketArchivo").addEventListener("change", e => { const f = e.target.files[0
 $("#btnTkOtra").onclick = () => $("#ticketInput").click();
 $("#btnTkCerrar").onclick = () => $("#dlgTicket").close();
 $("#btnTkOk").onclick = () => {
+  medir(ticketDigital ? "ticketsDigital" : "tickets"); ticketDigital = false;
   const sel = ticketRes.filter(r => r.ok && limpiar(r.nombre));
   if (!sel.length) return;
   const b = writeBatch(db);
@@ -4923,6 +5073,103 @@ $("#btnTkOk").onclick = () => {
 
 /* ---------- logros y racha ---------- */
 const inicioSemana = t => { const d = new Date(t); d.setHours(0, 0, 0, 0); d.setDate(d.getDate() - ((d.getDay() + 6) % 7)); return d.getTime(); };
+/* ---------- racha de la casa: días seguidos en que alguien anotó algo ---------- */
+const diaDe = t => { const d = new Date(t); return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`; };
+function diasActivos() {
+  const set = new Set();
+  for (const m of movs) if (ms(m.ts)) set.add(diaDe(ms(m.ts)));
+  for (const c of compras) if (ms(c.fecha)) set.add(diaDe(ms(c.fecha)));
+  for (const it of items) if (ms(it.actualizado)) set.add(diaDe(ms(it.actualizado)));
+  if (config.pregunta?.resp && config.pregunta.fecha) { const [y, mo, d] = config.pregunta.fecha.split("-").map(Number); set.add(`${y}-${mo - 1}-${d}`); }
+  return set;
+}
+function rachaDias() {
+  const set = diasActivos(), hoy = new Date();
+  const hizoHoy = set.has(diaDe(hoy));
+  const d = new Date(hoy); if (!hizoHoy) d.setDate(d.getDate() - 1);
+  let n = 0; while (set.has(diaDe(d)) && n < 400) { n++; d.setDate(d.getDate() - 1); }
+  return { n, hizoHoy };
+}
+function htmlRacha() {
+  const { n, hizoHoy } = rachaDias();
+  if (n < 2) return "";
+  const hito = [7, 14, 30, 60, 100].includes(n) && hizoHoy;
+  if (hito && lsGet(`hito:${casaId}:${n}`) !== "1") { lsSet(`hito:${casaId}:${n}`, "1"); setTimeout(() => toast(`🔥 ¡${n} días seguidos con la despensa al día!`), 600); }
+  return `<div class="racha ${hizoHoy ? "" : "pendiente"}"><span class="racha-fuego" aria-hidden="true">🔥</span><span><b>${n} días seguidos</b> con la despensa al día</span>${hizoHoy ? `<small>¡Bien, casa!</small>` : `<small>Anotá algo hoy para no cortarla</small>`}</div>`;
+}
+
+/* ---------- resumen del mes (para mirar y compartir) ---------- */
+function datosMes(off = 1) {
+  const ini = new Date(); ini.setDate(1); ini.setHours(0, 0, 0, 0); ini.setMonth(ini.getMonth() - off);
+  const fin = new Date(ini); fin.setMonth(fin.getMonth() + 1);
+  const enMes = t => t >= +ini && t < +fin;
+  const ms_ = movs.filter(m => enMes(ms(m.ts)));
+  const recetas = new Map(), usados = new Map(), quien = new Map(), dias = new Set();
+  let comprados = 0, aprovechados = 0;
+  for (const m of ms_) {
+    dias.add(diaDe(ms(m.ts)));
+    const q = primerDe(m.por); if (q) quien.set(q, (quien.get(q) || 0) + 1);
+    if (m.receta) recetas.set(m.receta, (recetas.get(m.receta) || 0) + (m.tipo === "receta" || !recetas.has(m.receta) ? 1 : 0));
+    if (m.aprovecho) aprovechados++;
+    if (m.tipo === "compra" || (m.tipo === "suma" && m.delta > 0)) comprados++;
+    if (m.delta < 0 && m.itemId !== "-") { const k = m.nombre; const u = usados.get(k) || { n: 0, uni: m.unidad || "" }; u.n += Math.abs(num(m.delta)); usados.set(k, u); }
+  }
+  const nRecetas = new Set(ms_.filter(m => m.receta).map(m => m.receta + diaDe(ms(m.ts)))).size;
+  const top = [...usados.entries()].sort((a, b) => b[1].n - a[1].n).slice(0, 3);
+  const estrella = [...quien.entries()].sort((a, b) => b[1] - a[1])[0];
+  const mes = ini.toLocaleDateString("es-AR", { month: "long" });
+  return { mes, anio: ini.getFullYear(), dias: dias.size, nRecetas, recetaTop: [...recetas.entries()].sort((a, b) => b[1] - a[1])[0]?.[0], comprados, aprovechados, top, estrella, total: ms_.length };
+}
+function abrirResumenMes(off = 1) {
+  const r = datosMes(off);
+  $("#mesTit").textContent = `Tu ${r.mes} en Kai`;
+  $("#mesCuerpo").innerHTML = r.total ? `
+    <div class="mes-stats">
+      <div><b class="num">${r.dias}</b><span>días con la despensa al día</span></div>
+      <div><b class="num">${r.nRecetas}</b><span>comidas cocinadas</span></div>
+      <div><b class="num">${r.comprados}</b><span>productos comprados</span></div>
+      <div><b class="num">${r.aprovechados}</b><span>cosas usadas antes de vencer</span></div>
+    </div>
+    ${r.top.length ? `<p><b>Lo que más usaron:</b> ${r.top.map(([n, u]) => `${esc(n.toLowerCase())} (${fmt(u.n)} ${esc(u.uni)})`).join(", ")}.</p>` : ""}
+    ${r.recetaTop ? `<p><b>La comida del mes:</b> ${esc(r.recetaTop.toLowerCase())}.</p>` : ""}
+    ${r.estrella && miembros.length > 1 ? `<p><b>Quien más anotó:</b> ${esc(r.estrella[0])} 🏆</p>` : ""}`
+    : `<p class="hint">Todavía no hay datos de ${esc(r.mes)}. A medida que usen Kai, acá aparece el resumen.</p>`;
+  $("#mesCompartir").hidden = !r.total;
+  $("#mesCompartir").onclick = () => compartirMes(r);
+  $("#dlgMes").showModal();
+}
+async function compartirMes(r) {
+  medir("resumenMes");
+  // una imagen tipo ticket de Kai, lista para mandar por WhatsApp o subir a historias
+  const W = 1080, H = 1350, c = document.createElement("canvas"); c.width = W; c.height = H;
+  const x = c.getContext("2d");
+  x.fillStyle = "#E9E4D8"; x.fillRect(0, 0, W, H);
+  const tx = 140, tw = W - 280;
+  x.fillStyle = "#FBFAF5"; x.fillRect(tx, 120, tw, H - 260);
+  x.fillStyle = "#E9E4D8"; for (let i = 0; i < tw; i += 40) { x.beginPath(); x.moveTo(tx + i, H - 140); x.lineTo(tx + i + 20, H - 160); x.lineTo(tx + i + 40, H - 140); x.fill(); }
+  try { await document.fonts.load("800 40px Unbounded"); } catch {}
+  x.fillStyle = "#3E4A20"; x.font = "800 96px Unbounded, sans-serif"; x.textAlign = "center"; x.fillText("KAI", W / 2, 260);
+  x.font = "600 34px Figtree, sans-serif"; x.fillStyle = "#5c6150"; x.fillText(`MI ${r.mes.toUpperCase()} ${r.anio}`, W / 2, 320);
+  const linea = y => { x.strokeStyle = "#c9c3b2"; x.setLineDash([10, 10]); x.lineWidth = 3; x.beginPath(); x.moveTo(tx + 50, y); x.lineTo(tx + tw - 50, y); x.stroke(); x.setLineDash([]); };
+  linea(370);
+  const filas = [["Días al día", r.dias], ["Comidas cocinadas", r.nRecetas], ["Productos comprados", r.comprados], ["Usados antes de vencer", r.aprovechados]];
+  x.textAlign = "left"; let y = 450;
+  for (const [t, v] of filas) { x.font = "500 40px Figtree, sans-serif"; x.fillStyle = "#2b2f22"; x.fillText(t, tx + 60, y); x.textAlign = "right"; x.font = "800 48px Unbounded, sans-serif"; x.fillText(String(v), tx + tw - 60, y); x.textAlign = "left"; y += 90; }
+  linea(y - 30);
+  x.font = "500 34px Figtree, sans-serif"; x.fillStyle = "#2b2f22";
+  if (r.recetaTop) { x.fillText("Comida del mes:", tx + 60, y + 40); x.font = "700 38px Figtree, sans-serif"; x.fillText(r.recetaTop.slice(0, 30), tx + 60, y + 90); y += 120; }
+  x.textAlign = "center"; x.font = "700 40px Figtree, sans-serif"; x.fillStyle = "#3E4A20"; x.fillText("Con lo que hay, ¿alcanza?", W / 2, H - 230);
+  x.font = "500 28px Figtree, sans-serif"; x.fillStyle = "#5c6150"; x.fillText("bacher86.github.io/despensa", W / 2, H - 185);
+  const blob = await new Promise(ok => c.toBlob(ok, "image/png"));
+  const file = new File([blob], `kai-${r.mes}.png`, { type: "image/png" });
+  const texto = `Mi ${r.mes} en Kai: ${r.dias} días con la despensa al día y ${r.nRecetas} comidas cocinadas 🧾 Probala: ${location.origin}${location.pathname}`;
+  try {
+    if (navigator.canShare?.({ files: [file] })) { await navigator.share({ files: [file], text: texto }); return; }
+  } catch (er) { if (er?.name === "AbortError") return; }
+  const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = file.name; a.click();
+  toast("Imagen guardada. Subila a tus historias o mandala por WhatsApp.");
+}
+document.addEventListener("click", e => { const b = e.target.closest("[data-resumenmes]"); if (b) abrirResumenMes(Number(b.dataset.resumenmes || 1)); });
 function racha() {
   const semanas = new Set();
   for (const m of movs) semanas.add(inicioSemana(ms(m.ts)));
@@ -5162,6 +5409,7 @@ function cerrarEscucha() {
 let vozPrefijo = "";
 // texto que llega sin abrir el micrófono: atajo de Siri, «Compartir → Kai», link
 function procesarTexto(texto) {
+  medir("voz");
   vozPrefijo = "";
   // un texto compartido puede venir como lista: cada renglón es un producto; sacamos títulos como «Lista:» o «Súper»
   const renglones = String(texto).split(/\n+/).map(x => x.replace(/^\s*[-•*·\d.)]+\s*/, "").replace(/^[^,:]{0,24}:\s*/, "").trim()).filter(Boolean);
