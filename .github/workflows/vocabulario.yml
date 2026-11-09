@@ -1,0 +1,30 @@
+name: Vocabulario para leer tickets
+
+# Se corre a mano (Run workflow). Arma datos/vocab.json y datos/ean.json con los productos de todos los
+# supermercados del país (base SEPA / Precios Claros), para que Kai lea mejor los tickets.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  vocab:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v5
+      - name: Bajar y analizar la base SEPA
+        run: python3 scripts/vocabulario_sepa.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: muestras
+          path: /tmp/muestras.txt
+      - name: Guardar
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898283+github-actions[bot]@users.noreply.github.com"
+          git add datos/
+          git diff --cached --quiet && { echo "Sin cambios"; exit 0; }
+          git commit -m "Vocabulario de productos para leer tickets (SEPA)"
+          git push

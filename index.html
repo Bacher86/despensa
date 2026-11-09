@@ -116,20 +116,6 @@ main{padding-block:12px calc(96px + env(safe-area-inset-bottom,0px))}
 .super-cta .btn,.super-on .btn{flex:none}
 .pulso{width:12px;height:12px;border-radius:50%;background:var(--accent);flex:none;box-shadow:0 0 0 0 var(--accent)}
 @media (prefers-reduced-motion:no-preference){.pulso{animation:pulso 1.6s infinite}@keyframes pulso{70%{box-shadow:0 0 0 10px transparent}100%{box-shadow:0 0 0 0 transparent}}}
-/* tu inflación */
-.infla-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,140px),1fr));gap:10px}
-.infla-box{display:grid;gap:2px;background:var(--bg);border-radius:12px;padding:12px}
-.infla-box small{font-size:.78rem;color:var(--muted);font-weight:700}
-.infla-box b{font:800 1.9rem/1.1 var(--f-display)}
-.infla-box span{font-size:.8rem;color:var(--muted)}
-.infla-box b.sube,.sube{color:var(--bad)} .infla-box b.baja,.baja{color:var(--accent)} .infla-box b.gris{color:var(--muted)}
-.infla-txt{margin:0;font-size:.9rem}
-.infla-mov{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:.85rem}
-.infla-mov i,.row-meta i{font-style:normal;font-weight:700}
-.mejor-cadena{background:var(--accent-soft);border-radius:12px;padding:10px 14px;margin-bottom:8px;font-size:.92rem}
-.mas-barato{display:grid;justify-items:end;line-height:1.15}
-.mas-barato small{font-size:.72rem;color:var(--accent);font-weight:700}
-.pagaste{border-top:1px solid var(--line);padding-top:6px;margin-top:4px;color:var(--ink)}
 /* voz */
 .voz-mic{display:flex;align-items:center;gap:12px;font:600 1.1rem var(--f-display)}
 .pulso.grande{width:18px;height:18px;background:var(--bad)}
@@ -1214,6 +1200,7 @@ const $ = s => document.querySelector(s);
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const num = v => { const n = parseFloat(String(v ?? "").replace(",", ".")); return isFinite(n) ? n : 0; };
 const fmt = n => Number((+n || 0).toFixed(2)).toLocaleString("es-AR");
+const pct = (x, dec = 1) => `${x > 0 ? "+" : ""}${(x * 100).toLocaleString("es-AR", { maximumFractionDigits: dec, minimumFractionDigits: dec })}%`;
 const pesos = n => (+n || 0).toLocaleString("es-AR", { style: "currency", currency: "ARS", maximumFractionDigits: 0 });
 const ms = t => t?.toMillis ? t.toMillis() : typeof t === "number" ? t : Date.now();
 const catDe = it => CATS.includes(it.categoria) ? it.categoria : "Otros";
@@ -2094,7 +2081,6 @@ function renderGastos() {
     </div>
     <p class="hint" style="margin:6px 2px 0">Para la verdulería, la carnicería o una compra rápida en el súper. Las compras de la Lista se cargan solas.</p>
 
-    ${htmlInflacion()}
 
     ${comercios.length ? `<h2>Dónde compraste este mes</h2><div class="panel">${comercios.map(([r, v]) => `
       <div class="hbar"><span>${esc(r)}</span><div class="track"><i style="width:${v / maxCom * 100}%"></i></div><b class="num">${pesos(v)}</b></div>`).join("")}</div>` : ""}
@@ -2387,7 +2373,6 @@ function historialHTML(it) {
     ${t ? `<p class="hint" style="margin:4px 0 0">Kai lo aprendió de ${(() => { const inf = tasasInfo.get(it.id) || {}; return [inf.compras ? `${inf.compras} compra${inf.compras > 1 ? "s" : ""}` : "", inf.usos ? `${inf.usos} uso${inf.usos > 1 ? "s" : ""}` : ""].filter(Boolean).join(" y ") || "lo que anotaron"; })()}${num(it.ritmo) && num(it.ritmo) !== 1 ? ", ajustado con tus correcciones" : ""}. Te avisa antes de que se termine.</p>`
       : `<p class="hint" style="margin:4px 0 0">Kai aprende cuánto les dura cuando lo compran un par de veces (con el ticket o la lista) o cuando anotan que se terminó.</p>`}
     ${precios.length > 1 ? `<p class="hint" style="margin:4px 0 0">Precio: ${precios.slice(0, 4).reverse().map(m => pesos(m.precio)).join(" → ")}${num(precios[precios.length - 1].precio) ? ` (${pct(num(precios[0].precio) / num(precios[precios.length - 1].precio) - 1, 0)})` : ""}</p>` : ""}
-    ${refProductoHTML(it)}
     <div class="hist">${mios.slice(0, 8).map(m => `<div class="hist-row"><span><b>${etiqueta[m.tipo] || m.tipo} ${fmt(Math.abs(m.delta))} ${esc(m.unidad)}</b> · ${esc((m.por || "").split(" ")[0])}</span><span>${hace(m.ts)}</span></div>`).join("") || `<div class="hist-row">Sin movimientos todavía</div>`}</div>
   </div>`;
 }
@@ -4640,110 +4625,6 @@ document.addEventListener("click", e => {
   if ("compartirmenu" in t.dataset) compartir("Menú de la semana", textoMenu());
   if ("compartirlogros" in t.dataset) { const r = racha(), n = LOGROS.filter(l => logrosCasa()[l.id]).length; compartir("Mis logros", `🏅 Llevo ${r} semana${r === 1 ? "" : "s"} seguidas con la casa en orden y ${n} logros en Kai. ¿Te sumás?`); }
 });
-
-/* ---------- precios de supermercados y tu inflación ----------
-   precios.json lo genera todos los días una GitHub Action con los datos oficiales de Precios Claros (SEPA). */
-let PRECIOS = null;
-fetch("precios.json", { cache: "no-cache" }).then(r => r.ok ? r.json() : null)
-  .then(j => { if (j?.productos) { PRECIOS = j; if (tab === "gastos") renderGastos(); } }).catch(() => {});
-const UNI_REF = { kg: "kg", L: "litro", u: "unidad", m: "metro" };
-const pct = (x, dec = 1) => `${x > 0 ? "+" : ""}${(x * 100).toLocaleString("es-AR", { maximumFractionDigits: dec, minimumFractionDigits: dec })}%`;
-const pctN = x => pct(x / 100);
-
-// producto de referencia que corresponde a algo de la despensa (gana la palabra más específica)
-function refDe(it) {
-  if (!PRECIOS) return null;
-  const n = normal(it.nombre);
-  let mejor = null, largo = 0;
-  for (const [id, p] of Object.entries(PRECIOS.productos)) for (const c of p.claves || []) {
-    if (c.length > largo && reReceta(c).test(n)) { mejor = { id, ...p }; largo = c.length; }
-  }
-  return mejor;
-}
-// lo que pagaste por kg / litro / unidad, si la unidad del producto se puede comparar
-function pagadoPorBase(it, ref) {
-  const p = num(it.precio); if (!p) return null;
-  const f = { kg: { kg: 1, g: 1000 }, L: { L: 1, ml: 1000 }, u: { u: 1 }, m: {} }[ref.unidad] || {};
-  return f[it.unidad] ? p * f[it.unidad] : null;
-}
-
-// inflación de la casa: precio unitario de lo que compraste en los últimos 30 días vs. los 90 anteriores
-function miInflacion() {
-  const ahora = Date.now(), rec = new Map(), ant = new Map();
-  for (const c of compras) {
-    if (esGasto(c)) continue;
-    const t = ms(c.fecha);
-    const dest = t > ahora - 30 * DIA ? rec : t > ahora - 120 * DIA ? ant : null;
-    if (!dest) continue;
-    for (const it of c.items || []) {
-      if (!num(it.precio)) continue;
-      const k = it.itemId || normal(it.nombre);
-      const x = dest.get(k) || { s: 0, n: 0, gasto: 0, nombre: it.nombre };
-      x.s += num(it.precio); x.n++; x.gasto += num(it.precio) * (num(it.cant) || 1);
-      dest.set(k, x);
-    }
-  }
-  const comps = [];
-  for (const [k, r] of rec) { const a = ant.get(k); if (a) comps.push({ nombre: r.nombre, v: (r.s / r.n) / (a.s / a.n) - 1, peso: r.gasto || 1 }); }
-  const total = comps.length >= 3 ? comps.reduce((s, c) => s + c.v * c.peso, 0) / comps.reduce((s, c) => s + c.peso, 0) : null;
-  return { comps: comps.sort((a, b) => b.v - a.v), total };
-}
-
-// para cada producto de la despensa: precio típico por cadena y dónde conviene
-function comparacionDespensa() {
-  if (!PRECIOS) return { filas: [], ranking: [] };
-  const vistos = new Set(), filas = [];
-  for (const it of items) {
-    const r = refDe(it);
-    if (!r || vistos.has(r.id)) continue;
-    vistos.add(r.id);
-    const orden = Object.entries(r.precios).sort((a, b) => a[1] - b[1]);
-    filas.push({ it, r, orden, pagado: pagadoPorBase(it, r) });
-  }
-  // qué cadena sale más barata para lo que vos comprás (promedio de cuánto se aleja de la mediana)
-  const acum = {};
-  for (const f of filas) for (const [c, p] of f.orden) { (acum[c] ||= []).push(p / f.r.mediana); }
-  const ranking = Object.entries(acum).filter(([, v]) => v.length >= Math.min(3, filas.length)).map(([c, v]) => [c, v.reduce((s, x) => s + x, 0) / v.length - 1]).sort((a, b) => a[1] - b[1]);
-  return { filas, ranking };
-}
-
-function htmlInflacion() {
-  const mi = miInflacion();
-  const can = PRECIOS?.canasta_var30;
-  const { filas, ranking } = comparacionDespensa();
-  const fechaAct = PRECIOS ? new Date(PRECIOS.actualizado + "T12:00:00").toLocaleDateString("es-AR", { day: "numeric", month: "short" }) : "";
-  const subieron = mi.comps.filter(c => Math.abs(c.v) >= 0.01).slice(0, 4);
-  let h = `<h2>Tu inflación</h2>
-    <div class="panel infla">
-      <div class="infla-grid">
-        <div class="infla-box"><small>Tu compra · 30 días</small>${mi.total != null ? `<b class="num ${mi.total > 0 ? "sube" : "baja"}">${pct(mi.total)}</b><span>en ${mi.comps.length} productos que volviste a comprar</span>` : `<b class="num gris">—</b><span>Cargá tickets o compras con precio un par de semanas y la calculamos.</span>`}</div>
-        ${PRECIOS ? `<div class="infla-box"><small>Supermercados · 30 días</small>${can != null ? `<b class="num ${can > 0 ? "sube" : "baja"}">${pctN(can)}</b><span>${Object.keys(PRECIOS.productos).length} productos en ${PRECIOS.cadenas.join(", ")}</span>` : `<b class="num gris">—</b><span>Se arma con el historial: en unas semanas vas a ver cuánto subió.</span>`}</div>` : ""}
-      </div>
-      ${mi.total != null && can != null ? `<p class="infla-txt">${mi.total * 100 < can - 0.5 ? `Tu compra subió menos que los supermercados. Bien ahí.` : mi.total * 100 > can + 0.5 ? `Tu compra subió más que el promedio de los supermercados: mirá abajo dónde conviene comprar.` : `Tu compra subió parecido al promedio de los supermercados.`}</p>` : ""}
-      ${subieron.length ? `<div class="infla-mov">${subieron.map(c => `<span><b>${esc(c.nombre)}</b> <i class="${c.v > 0 ? "sube" : "baja"}">${pct(c.v, 0)}</i></span>`).join("")}</div>` : ""}
-    </div>`;
-  if (PRECIOS && filas.length) {
-    h += `<h2>¿Dónde está más barato?</h2>
-      ${ranking.length ? `<div class="mejor-cadena"><span>Para lo que hay en tu despensa, <b>${esc(ranking[0][0])}</b> sale ${pct(Math.abs(ranking[0][1]), 0).replace("+", "")} ${ranking[0][1] < 0 ? "más barato" : "más caro"} que el promedio.</span></div>` : ""}
-      <div class="list precios-lista">${filas.slice(0, 15).map(f => `
-        <details class="compra"><summary>
-          <span><span class="row-name">${esc(f.it.nombre)}</span><br><span class="row-meta">${esc(f.r.nombre)} · por ${UNI_REF[f.r.unidad]}${f.r.var30 != null ? ` · <i class="${f.r.var30 > 0 ? "sube" : "baja"}">${pctN(f.r.var30)} en 30 días</i>` : ""}</span></span>
-          <span class="mas-barato"><small>${esc(f.orden[0][0])}</small><b class="num">${pesos(f.orden[0][1])}</b></span></summary>
-          <div class="det">${f.orden.map(([c, p], i) => `<div><span>${i === 0 ? "★ " : ""}${esc(c)}</span><span class="num">${pesos(p)} / ${UNI_REF[f.r.unidad]}</span></div>`).join("")}
-            ${f.pagado ? `<div class="pagaste"><span>Vos pagaste</span><span class="num">${pesos(f.pagado)} / ${UNI_REF[f.r.unidad]} · ${pct(f.pagado / f.r.mediana - 1, 0)} vs. promedio</span></div>` : ""}</div>
-        </details>`).join("")}</div>`;
-  }
-  if (PRECIOS) h += `<p class="hint" style="margin-top:8px">Precio típico por kilo o litro en cada cadena. Fuente: ${esc(PRECIOS.fuente_corta || "Precios Claros (SEPA), datos abiertos de la Secretaría de Comercio")} · actualizado ${fechaAct}. Los precios pueden variar según la sucursal.</p>`;
-  return h;
-}
-
-// en la ficha de un producto
-function refProductoHTML(it) {
-  const r = refDe(it); if (!r) return "";
-  const orden = Object.entries(r.precios).sort((a, b) => a[1] - b[1]);
-  const pag = pagadoPorBase(it, r);
-  return `<p class="hint" style="margin:4px 0 0">En el súper: ${orden.map(([c, p]) => `${esc(c)} ${pesos(p)}`).join(" · ")} por ${UNI_REF[r.unidad]}${pag ? `. Vos pagaste ${pesos(pag)} (${pct(pag / r.mediana - 1, 0)}).` : "."}</p>`;
-}
 
 /* ---------- hablarle a la app (reconocimiento de voz del navegador, gratis) ---------- */
 const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
