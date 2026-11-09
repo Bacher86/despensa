@@ -280,8 +280,11 @@ def main():
                 cand = [w for w in full if len(w) > len(t) and w[0] == t[0] and (w.startswith(t) or re.fullmatch(".*".join(map(re.escape, t)) + ".*", w))]
                 if cand: pares[t][min(cand, key=len) if all(w.startswith(t) for w in cand) else cand[0]] += 1
     abrev = {}
+    UNID = {"gr", "grs", "grm", "ml", "cc", "lt", "lts", "kg", "kgs", "un", "uni", "unid", "mt", "mts", "cm", "mm", "pack", "x"}
     for t, c in pares.items():
         w, n = c.most_common(1)[0]
+        # no "abreviamos" palabras que ya existen solas (pan, gato, moto) ni unidades
+        if len(t) < 2 or t in UNID or (palabras[t] >= 25 and len(t) >= 3) or (len(t) == 2 and n < 30): continue
         if n >= 3 and n / sum(c.values()) >= 0.55: abrev[t] = w
     log(f"Abreviaturas aprendidas: {len(abrev):,}. Ejemplos: " + ", ".join(f"{k}→{v}" for k, v in list(sorted(abrev.items(), key=lambda kv: -sum(pares[kv[0]].values())))[:60]))
 
@@ -297,21 +300,24 @@ def main():
         for c in cs:
             k = re.sub(r"\s+", " ", normal(c))
             if len(k) >= 6 and k not in corto_nom: corto_nom[k] = n
+    fuente = {"fuente": "SEPA / Precios Claros (datos abiertos, CC BY 4.0)", "fecha": date.today().isoformat()}
+    json.dump({**fuente, "nombres": nombres, "cortos": corto_nom, "abrev": abrev},
+              open("datos/tickets.json", "w", encoding="utf-8"), ensure_ascii=False, separators=(",", ":"))
+    # códigos de barras: archivo aparte, Kai lo baja solo si el ticket trae códigos
+    nombres, idx = [], {}
     comunes = sorted(largo, key=lambda e: -len(ean_com[e]))[:60000]
     ean_nom = {e: nid(nombre_lindo(largo[e][1])) for e in comunes}
-    json.dump({"fuente": "SEPA / Precios Claros (datos abiertos, CC BY 4.0)", "fecha": date.today().isoformat(), "nombres": nombres, "cortos": corto_nom, "ean": ean_nom, "abrev": abrev},
-              open("datos/tickets.json", "w", encoding="utf-8"), ensure_ascii=False, separators=(",", ":"))
+    json.dump({**fuente, "nombres": nombres, "ean": ean_nom}, open("datos/ean.json", "w", encoding="utf-8"), ensure_ascii=False, separators=(",", ":"))
     pal = [[w, c] for w, c in palabras.most_common(9000) if c >= 3]
     mar = [[m, c] for m, c in marcas.most_common(3000) if c >= 3 and len(m) >= 2]
     json.dump({"fuente": "SEPA / Precios Claros (CC BY 4.0)", "fecha": date.today().isoformat(), "productos": st["productos"], "palabras": pal, "marcas": mar},
               open("datos/vocab.json", "w", encoding="utf-8"), ensure_ascii=False, separators=(",", ":"))
-    if os.path.exists("datos/ean.json"): os.remove("datos/ean.json")
     with open("datos/muestras_cadenas.txt", "w", encoding="utf-8") as f:
         for b, ms in sorted(muestras.items(), key=lambda x: x[0]):
             f.write(f"\n=== {b}\n" + "\n".join(ms) + "\n")
         f.write("\n=== EJEMPLOS ticket -> nombre\n" + "\n".join(f"{k} -> {nombres[v]}" for k, v in list(corto_nom.items())[:400]))
         f.write("\n=== ABREVIATURAS\n" + "\n".join(f"{k} -> {v} ({sum(pares[k].values())})" for k, v in sorted(abrev.items())))
-    log(f"tickets.json {os.path.getsize('datos/tickets.json') / 1e3:.0f} KB ({len(corto_nom):,} nombres de ticket, {len(ean_nom):,} códigos, {len(nombres):,} nombres) · vocab.json {os.path.getsize('datos/vocab.json') / 1e3:.0f} KB")
+    log(f"ean.json {os.path.getsize('datos/ean.json') / 1e3:.0f} KB · tickets.json {os.path.getsize('datos/tickets.json') / 1e3:.0f} KB ({len(corto_nom):,} nombres de ticket, {len(ean_nom):,} códigos, {len(nombres):,} nombres) · vocab.json {os.path.getsize('datos/vocab.json') / 1e3:.0f} KB")
 
 if __name__ == "__main__":
     main()
