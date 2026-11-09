@@ -280,11 +280,12 @@ def main():
                 cand = [w for w in full if len(w) > len(t) and w[0] == t[0] and (w.startswith(t) or re.fullmatch(".*".join(map(re.escape, t)) + ".*", w))]
                 if cand: pares[t][min(cand, key=len) if all(w.startswith(t) for w in cand) else cand[0]] += 1
     abrev = {}
+    PALABRAS_REALES = set("pan gato gatos perro perros moto sal te mate ron sol mar oro uva ajo gel kit set mix al de la el en las los del con sin por para una uno dos tres mas pie pies ojo ojos oso osos mini maxi bebe baby kids men man fem dia luz paz rey ley red".split())
     UNID = {"gr", "grs", "grm", "ml", "cc", "lt", "lts", "kg", "kgs", "un", "uni", "unid", "mt", "mts", "cm", "mm", "pack", "x"}
     for t, c in pares.items():
         w, n = c.most_common(1)[0]
         # no "abreviamos" palabras que ya existen solas (pan, gato, moto) ni unidades
-        if len(t) < 2 or t in UNID or (palabras[t] >= 25 and len(t) >= 3) or (len(t) == 2 and n < 30): continue
+        if len(t) < 2 or t in UNID or t in PALABRAS_REALES or (len(t) == 2 and n < 40): continue
         if n >= 3 and n / sum(c.values()) >= 0.55: abrev[t] = w
     log(f"Abreviaturas aprendidas: {len(abrev):,}. Ejemplos: " + ", ".join(f"{k}→{v}" for k, v in list(sorted(abrev.items(), key=lambda kv: -sum(pares[kv[0]].values())))[:60]))
 
