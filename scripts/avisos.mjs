@@ -4,7 +4,8 @@
 //  · "Uriel agregó leche a la lista" (a los demás de la casa)
 //  · "Mañana se termina el café" (según lo que Kai aprendió que dura cada cosa) · una vez por día, 10 h
 //  · "El yogur vence mañana"                                                     · una vez por día, 10 h
-//  · "¿Revisamos la despensa?" los domingos a las 19 h, si hace 6 días que no se hace el repaso
+//  · el resumen, los días y a la hora que eligió cada uno (por defecto domingos 19 h):
+//    "¿Revisamos la despensa?" si hace días que no se hace el repaso, o lo que falta y lo que vence
 import { initializeApp, cert } from "firebase-admin/app";
 import { getFirestore, Timestamp, FieldValue } from "firebase-admin/firestore";
 import { getMessaging } from "firebase-admin/messaging";
@@ -89,7 +90,6 @@ async function main() {
   const desde = Math.max(ms(est.ultimo) || ahora - 30 * 60000, ahora - 6 * 3600000);
   const enviados = Object.fromEntries(Object.entries(est.enviados || {}).filter(([, t]) => ahora - t < 4 * DIA));
   const diario = ar.hora >= 10 && est.diario !== ar.fecha;          // primera corrida después de las 10
-  const domingo = ar.dia === 0 && ar.hora >= 19 && est.repaso !== ar.fecha;
   let total = 0;
 
   const casas = await db.collection("hogar").get();
@@ -98,7 +98,8 @@ async function main() {
     const miembros = mSnap.docs.map(d => ({ uid: d.id, ref: d.ref, ...d.data() })).filter(m => Array.isArray(m.fcm) && m.fcm.length);
     if (!miembros.length) continue;
     const config = casa.data() || {};
-    const avisos = [];   // { title, body, tab, tag, salvo? }
+    const avisos = [];   // { title, body, tab, tag, salvo?, solo? }
+    let itemsCasa = null;
 
     // 1) lo que se agregó a la lista desde la última vuelta
     const nuevos = await casa.ref.collection("items").where("agregadoTs", ">", Timestamp.fromMillis(desde)).get();
@@ -113,7 +114,7 @@ async function main() {
 
     // 2) lo que se termina mañana y lo que vence mañana (una vez por día)
     if (diario) {
-      const items = (await casa.ref.collection("items").get()).docs.map(d => ({ id: d.id, ...d.data() }));
+      const items = itemsCasa = (await casa.ref.collection("items").get()).docs.map(d => ({ id: d.id, ...d.data() }));
       const movs = (await casa.ref.collection("movimientos").where("ts", ">=", Timestamp.fromMillis(ahora - 90 * DIA)).get()).docs.map(d => d.data());
       const { pronto } = pronostico(items, movs, config, ahora);
       for (const it of pronto.slice(0, 3)) {
@@ -126,15 +127,26 @@ async function main() {
       }
     }
 
-    // 3) repaso de los domingos
-    if (domingo && (ahora - ms(config.repasoUlt)) / DIA >= 6) {
-      const k = `${casa.id}:repaso:${ar.fecha}`;
-      if (!enviados[k]) { enviados[k] = ahora; avisos.push({ title: "¿Revisamos la despensa?", body: "30 segundos: deslizá lo que queda y lo que se terminó.", tab: "repaso", tag: "repaso" }); }
+    // 3) resumen: a cada uno, los días y la hora que eligió
+    const resumenPara = miembros.filter(m => {
+      const c = m.resumen || { dias: [0], hora: 19 };
+      return Array.isArray(c.dias) && c.dias.includes(ar.dia) && ar.hora >= (c.hora ?? 19) && !enviados[`${casa.id}:resumen:${m.uid}:${ar.fecha}`];
+    });
+    if (resumenPara.length) {
+      const items = itemsCasa || (await casa.ref.collection("items").get()).docs.map(d => ({ id: d.id, ...d.data() }));
+      const faltan = items.filter(i => i.enLista === true || num(i.cantidad) <= 0).map(i => minus(i.nombre));
+      const sinRepaso = (ahora - ms(config.repasoUlt)) / DIA >= 2 && items.length >= 3;
+      const a = sinRepaso
+        ? { title: "¿Revisamos la despensa?", body: "30 segundos: deslizá lo que queda y lo que se terminó.", tab: "repaso", tag: "resumen" }
+        : { title: "Tu resumen de Kai", body: faltan.length ? `Faltan ${faltan.length}: ${listar(faltan)}.` : "No falta nada en la despensa.", tab: "lista", tag: "resumen" };
+      for (const m of resumenPara) enviados[`${casa.id}:resumen:${m.uid}:${ar.fecha}`] = ahora;
+      avisos.push({ ...a, solo: new Set(resumenPara.map(m => m.uid)) });
     }
 
     for (const a of avisos) {
       for (const m of miembros) {
         if (a.salvo && primer(m.nombre) === a.salvo) continue;
+        if (a.solo && !a.solo.has(m.uid)) continue;
         const r = await fcm.sendEachForMulticast({
           tokens: m.fcm.slice(-5),
           data: { title: a.title.slice(0, 120), body: a.body, tab: a.tab, tag: a.tag },
@@ -146,7 +158,7 @@ async function main() {
       }
     }
   }
-  await estadoRef.set({ ultimo: ahora, enviados, ...(diario ? { diario: ar.fecha } : {}), ...(domingo ? { repaso: ar.fecha } : {}) }, { merge: false });
+  await estadoRef.set({ ultimo: ahora, enviados, ...(diario ? { diario: ar.fecha } : {}) }, { merge: false });
   console.log(`Listo: ${total} avisos entregados.`);
 }
 if (process.argv[1]?.endsWith("avisos.mjs")) main().catch(e => { console.error(e); process.exit(1); });

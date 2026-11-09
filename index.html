@@ -251,6 +251,7 @@ main{padding-block:12px calc(96px + env(safe-area-inset-bottom,0px))}
 .r-no{background:var(--tomate-texto,#b8431f);color:#fbfcf6}.r-poco{background:var(--mostaza);color:#23271d}.r-si{background:var(--prof);color:var(--prof-ink)}
 .repaso-fin{display:grid;gap:8px;text-align:center;padding:16px 0}.repaso-fin b{font:800 1.6rem var(--f-kai)}.repaso-fin p{margin:0}
 .hogar-box{display:grid;gap:10px}.hogar-grid{display:grid;gap:2px}.hogar-fila{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:8px 0;border-bottom:1px dashed var(--line)}.hogar-fila:last-child{border-bottom:0}.hogar-fila span{display:grid;line-height:1.2}.hogar-fila small{color:var(--muted);font-size:.8rem}.hogar-fila output{min-width:2ch;text-align:center;font-weight:700}
+.res-dias{display:grid;gap:10px}.res-tit{display:flex;justify-content:space-between;align-items:center}.dias-chips{display:grid;grid-template-columns:repeat(7,1fr);gap:6px}.dia-chip{min-height:44px;border-radius:12px;border:1px solid var(--line);background:var(--surface);color:var(--ink);font-weight:700;font:inherit;font-weight:700;cursor:pointer}.dia-chip[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
 .ajustes-kai{display:grid;gap:12px}.sw{display:flex;gap:10px;align-items:flex-start}.sw input{margin-top:4px;accent-color:var(--prof)}.sw span{display:grid;gap:2px}.sw small{color:var(--muted)}
 .arranque{display:grid;gap:12px;max-height:88vh;overflow:auto}
 .arr-top{display:flex;justify-content:space-between;align-items:center;color:var(--muted);font-size:.85rem}
@@ -865,9 +866,11 @@ main h2::after{content:"";flex:1;min-width:28px;height:2px;background:var(--dash
       <div class="panel">
         <p id="avisosTxt"></p>
         <button class="btn" id="btnAvisos">Activar avisos</button>
-        <div class="grid2">
-          <label class="field"><span>Resumen semanal</span><select id="resDia"></select></label>
+        <div class="res-dias">
+          <div class="res-tit"><b>Resumen: ¿qué días?</b><button type="button" class="linkbtn" id="resTodos">Todos</button></div>
+          <div id="resDias" class="dias-chips" role="group" aria-label="Días del resumen"></div>
           <label class="field"><span>Hora</span><select id="resHora"></select></label>
+          <p class="hint" id="resTxt" style="margin:0"></p>
         </div>
         <button class="linkbtn" type="button" id="btnAvisosOff" style="justify-self:start" hidden>Desactivar avisos</button>
       </div>
@@ -3152,7 +3155,7 @@ async function registrarPush() {
     if (!token) return;
     const k = "fcm:" + casaId + ":" + user.uid;
     if (lsGet(k) === token) return;
-    await updateDoc(doc(db, "hogar", casaId, "miembros", user.uid), { fcm: arrayUnion(token) });
+    await updateDoc(doc(db, "hogar", casaId, "miembros", user.uid), { fcm: arrayUnion(token), resumen: resCfg() });
     lsSet(k, token); lsSet("fcm:token", token);
   } catch (e) { console.warn("Avisos push:", e?.message || e); }
 }
@@ -3170,7 +3173,21 @@ async function registrarSincro() {
   } catch {}
 }
 const DIAS = ["domingo", "lunes", "martes", "miércoles", "jueves", "viernes", "sábado"];
-const resCfg = () => { try { return { dia: 0, hora: 19, ...JSON.parse(lsGet("resumen", "{}")) }; } catch { return { dia: 0, hora: 19 }; } };
+// días del resumen: los que cada uno quiera (antes era uno solo: "dia")
+const resCfg = () => {
+  let c = {}; try { c = JSON.parse(lsGet("resumen", "{}")) || {}; } catch {}
+  const dias = Array.isArray(c.dias) ? c.dias.filter(d => d >= 0 && d <= 6) : c.dia == null ? [0] : c.dia < 0 ? [] : [c.dia];
+  return { dias: [...new Set(dias)].sort(), hora: c.hora ?? 19 };
+};
+const textoDias = d => d.length === 7 ? "todos los días" : !d.length ? "nunca" : d.length === 5 && [1, 2, 3, 4, 5].every(x => d.includes(x)) ? "de lunes a viernes"
+  : d.length === 2 && d.includes(0) && d.includes(6) ? "los fines de semana"
+  : "los " + [...d].sort((a, b) => (a || 7) - (b || 7)).map(x => DIAS[x].replace(/o$/, "os")).join(", ").replace(/, ([^,]*)$/, " y $1");
+function guardarResumen(c) {
+  lsSet("resumen", JSON.stringify(c));
+  if (casaId) lsSet("resumen:ult:" + casaId, String(Date.now()));
+  if (casaId && user) updateDoc(doc(db, "hogar", casaId, "miembros", user.uid), { resumen: c }).catch(() => {});
+  guardarParaSW(); pintarAvisos();
+}
 function pintarAvisos() {
   const on = puedeNotificar();
   const neg = soportaAvisos() && Notification.permission === "denied";
@@ -3181,25 +3198,31 @@ function pintarAvisos() {
   $("#btnAvisos").hidden = on || neg;
   $("#btnAvisosOff").hidden = !on;
   const c = resCfg();
-  if (document.activeElement?.id !== "resDia") $("#resDia").value = String(c.dia);
+  $("#resDias").innerHTML = [1, 2, 3, 4, 5, 6, 0].map(i => `<button type="button" class="dia-chip" data-resdia="${i}" aria-pressed="${c.dias.includes(i)}" aria-label="${DIAS[i]}">${DIAS[i][0].toUpperCase()}${i === 3 ? "i" : ""}</button>`).join("");
+  $("#resTodos").textContent = c.dias.length === 7 ? "Ninguno" : "Todos";
+  $("#resTxt").textContent = c.dias.length ? `Te mandamos un resumen ${textoDias(c.dias)} a las ${c.hora} h: lo que falta, lo que se termina y lo que vence.` : "Sin resumen. Elegí uno o más días para recibirlo.";
   if (document.activeElement?.id !== "resHora") $("#resHora").value = String(c.hora);
 }
-$("#resDia").innerHTML = DIAS.map((d, i) => `<option value="${i}">Los ${d}</option>`).join("") + `<option value="-1">No quiero resumen</option>`;
-$("#resHora").innerHTML = [8, 10, 12, 18, 19, 20, 21].map(h => `<option value="${h}">A las ${h} h</option>`).join("");
+$("#resHora").innerHTML = [7, 8, 9, 10, 12, 14, 17, 18, 19, 20, 21, 22].map(h => `<option value="${h}">A las ${h} h</option>`).join("");
+$("#resDias").addEventListener("click", e => {
+  const b = e.target.closest("[data-resdia]"); if (!b) return;
+  const c = resCfg(), d = Number(b.dataset.resdia);
+  c.dias = c.dias.includes(d) ? c.dias.filter(x => x !== d) : [...c.dias, d].sort();
+  guardarResumen(c);
+});
+$("#resTodos").onclick = () => { const c = resCfg(); c.dias = c.dias.length === 7 ? [] : [0, 1, 2, 3, 4, 5, 6]; guardarResumen(c); };
 $("#btnAvisos").onclick = activarAvisos;
 $("#btnAvisosOff").onclick = () => { quitarPush(); lsSet("avisos", "0"); guardarParaSW(); pintarAvisos(); toast("Avisos desactivados"); };
-for (const id of ["#resDia", "#resHora"]) $(id).addEventListener("change", () => {
-  lsSet("resumen", JSON.stringify({ dia: Number($("#resDia").value), hora: Number($("#resHora").value) }));
-  if (casaId) lsSet("resumen:ult:" + casaId, String(Date.now()));
-  guardarParaSW(); toast("✓ Resumen guardado");
-});
+$("#resHora").addEventListener("change", () => { guardarResumen({ ...resCfg(), hora: Number($("#resHora").value) }); toast("✓ Resumen guardado"); });
 
 /* ---------- resumen semanal ---------- */
+// el último momento (día elegido + hora) que ya pasó
 function ultimoMomento(cfg, ahora = new Date()) {
-  const d = new Date(ahora); d.setHours(cfg.hora, 0, 0, 0);
-  d.setDate(d.getDate() - ((d.getDay() - cfg.dia + 7) % 7));
-  if (d > ahora) d.setDate(d.getDate() - 7);
-  return d.getTime();
+  for (let i = 0; i < 8; i++) {
+    const d = new Date(ahora); d.setDate(d.getDate() - i); d.setHours(cfg.hora, 0, 0, 0);
+    if (d <= ahora && cfg.dias.includes(d.getDay())) return d.getTime();
+  }
+  return 0;
 }
 function datosResumen() {
   const faltan = items.filter(enLista);
@@ -3223,7 +3246,7 @@ async function guardarParaSW() {
     const r = datosResumen();
     await c.put("./__resumen", new Response(JSON.stringify({
       casa: casaId, on: puedeNotificar(), cfg: resCfg(), ult: Number(lsGet("resumen:ult:" + casaId, 0)),
-      titulo: candidatosRepaso().length >= 2 ? "¿Revisamos la despensa?" : "Tu resumen de la semana",
+      titulo: candidatosRepaso().length >= 2 ? "¿Revisamos la despensa?" : resCfg().dias.length > 1 ? "Tu resumen de Kai" : "Tu resumen de la semana",
       cuerpo: candidatosRepaso().length >= 2 ? `Son 30 segundos: ${listaNombres(candidatosRepaso(), 3)} se estarían terminando.` : textoResumen(r), guardado: Date.now()
     }), { headers: { "Content-Type": "application/json" } }));
   } catch {}
@@ -3238,14 +3261,14 @@ async function chequearResumen() {
     const cfg = resCfg();
     const k = "resumen:ult:" + casaId;
     if (lsGet(k) == null) { lsSet(k, String(Date.now())); return; }      // la primera semana no molesta
-    if (cfg.dia < 0) return;
+    if (!cfg.dias.length) return;
     const debido = ultimoMomento(cfg);
     const ult = Math.max(Number(lsGet(k, 0)), await ultSW());
     if (ult < debido) {
       lsSet(k, String(Date.now()));
       lsSet("resumen:visto:" + casaId, String(debido));
       if (candidatosRepaso().length >= 2) notificar("¿Revisamos la despensa?", `Son 30 segundos: ${listaNombres(candidatosRepaso(), 3)} se estarían terminando.`, "resumen", "repaso");
-      else notificar("Tu resumen de la semana", textoResumen(datosResumen()), "resumen", "lista");
+      else notificar(cfg.dias.length > 1 ? "Tu resumen de Kai" : "Tu resumen de la semana", textoResumen(datosResumen()), "resumen", "lista");
       if (tab === "despensa") renderDespensa();
     }
     chequearVencimientos();
@@ -3270,8 +3293,8 @@ function chequearVencimientos() {
 }
 const resumenVisible = () => {
   if (!casaId) return false;
-  const cfg = resCfg(); if (cfg.dia < 0) return false;
-  const debido = ultimoMomento(cfg);
+  const cfg = resCfg(); if (!cfg.dias.length) return false;
+  const debido = ultimoMomento(cfg); if (!debido) return false;
   return Date.now() - debido < 3 * DIA && Number(lsGet("resumen:visto:" + casaId, 0)) >= debido && Number(lsGet("resumen:cerrado:" + casaId, 0)) < debido;
 };
 

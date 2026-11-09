@@ -1,6 +1,6 @@
 // Service worker: permite instalar la app y abrirla rápido (y sin señal).
 // Si cambiás index.html, subí también este archivo con VERSION nueva para que los teléfonos se actualicen.
-const VERSION = "despensa-v37";
+const VERSION = "despensa-v38";
 const APP = ["./", "./index.html", "./recetas.js", "./ticket.js", "./consumo.js", "./manifest.webmanifest", "./icon.svg", "./icon-192.png", "./icon-512.png", "./apple-touch-icon.png"];
 
 // Librerías externas que conviene guardar en el teléfono (Firebase, fuentes, escáner)
@@ -85,10 +85,12 @@ self.addEventListener("notificationclick", e => {
 
 // Resumen semanal con la app cerrada (Chrome en Android, con la app instalada)
 function ultimoMomento(cfg, ahora = new Date()) {
-  const d = new Date(ahora); d.setHours(cfg.hora, 0, 0, 0);
-  d.setDate(d.getDate() - ((d.getDay() - cfg.dia + 7) % 7));
-  if (d > ahora) d.setDate(d.getDate() - 7);
-  return d.getTime();
+  const dias = Array.isArray(cfg.dias) ? cfg.dias : cfg.dia >= 0 ? [cfg.dia] : [];
+  for (let i = 0; i < 8; i++) {
+    const d = new Date(ahora); d.setDate(d.getDate() - i); d.setHours(cfg.hora, 0, 0, 0);
+    if (d <= ahora && dias.includes(d.getDay())) return d.getTime();
+  }
+  return 0;
 }
 self.addEventListener("periodicsync", e => {
   if (e.tag !== "resumen") return;
@@ -97,9 +99,9 @@ self.addEventListener("periodicsync", e => {
     const r = await c.match("./__resumen");
     if (!r) return;
     const d = await r.json();
-    if (!d.on || !d.cfg || d.cfg.dia < 0) return;
+    if (!d.on || !d.cfg) return;
     const debido = ultimoMomento(d.cfg);
-    if ((d.ult || 0) >= debido) return;
+    if (!debido || (d.ult || 0) >= debido) return;
     await self.registration.showNotification(d.titulo, { body: d.cuerpo, tag: "resumen", icon: "icon-192.png", badge: "icon-192.png", data: { tab: "lista" } });
     d.ult = Date.now();
     await c.put("./__resumen", new Response(JSON.stringify(d), { headers: { "Content-Type": "application/json" } }));
