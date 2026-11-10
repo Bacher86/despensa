@@ -407,8 +407,9 @@ html.es-app nav.tabs{padding-bottom:var(--sab)}
 html.con-banner nav.tabs{bottom:calc(var(--ad-h,0px) + var(--sab));padding-bottom:0}
 html.con-banner body::after{content:"";position:fixed;left:0;right:0;bottom:0;height:calc(var(--ad-h,0px) + var(--sab));background:var(--surface);z-index:5}
 html.con-banner main{padding-bottom:calc(96px + var(--ad-h,0px) + var(--sab))}
-html.con-banner .fab{bottom:calc(84px + var(--ad-h,0px) + var(--sab))}
-html.con-banner .toast{bottom:calc(150px + var(--ad-h,0px) + var(--sab))}
+html.es-app .fab{bottom:calc(var(--nav-h,84px) + 14px)}
+html.con-banner .fab{bottom:calc(var(--nav-h,84px) + 14px)}
+html.es-app .toast{bottom:calc(var(--nav-h,84px) + 86px)}
 html.con-banner .ad-barra{bottom:var(--sab);height:var(--ad-h,0px);max-width:none;padding:0;z-index:7}
 html.con-banner .ad-barra .ad-card{height:100%;margin:0;border-radius:0;padding:14px 40px 4px 12px;gap:10px;box-shadow:0 -1px 0 var(--line)}
 html.con-banner .ad-barra .ad-card img{width:38px;height:38px;border-radius:8px}
@@ -4257,6 +4258,19 @@ $("#dlgRepaso").addEventListener("click", e => {
   else if (b.id === "repasoCerrar" || b.id === "repasoListo") $("#dlgRepaso").close();
   else if ("repasolista" in b.dataset) { $("#dlgRepaso").close(); tab = "lista"; render(); window.scrollTo(0, 0); }
 });
+
+/* ---------- app: los botones flotantes siempre arriba de las pestañas y el banner ---------- */
+function anclarFlotantes() {
+  const nav = document.querySelector("nav.tabs"); if (!nav || nav.hidden || !nav.offsetHeight) return;
+  const libre = Math.max(0, Math.round(innerHeight - nav.getBoundingClientRect().top));
+  document.documentElement.style.setProperty("--nav-h", libre + "px");
+}
+if (esApp) {
+  addEventListener("resize", anclarFlotantes);
+  new ResizeObserver(anclarFlotantes).observe(document.querySelector("nav.tabs"));
+  new MutationObserver(() => requestAnimationFrame(anclarFlotantes)).observe(document.documentElement, { attributes: true, attributeFilter: ["class", "style"] });
+  setInterval(anclarFlotantes, 2000);
+}
 
 /* ---------- tocar un aviso de la app de Android ---------- */
 alAviso(d => {

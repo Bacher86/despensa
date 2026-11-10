@@ -68,8 +68,11 @@ export async function setChico(c) {
 
 async function mostrarBanner() {
   if (bannerOn || chico) return; bannerOn = true;
+  // reservar el lugar ya (alto típico de un banner adaptable), antes de que Google confirme el tamaño real
+  const est = Math.round(Math.min(90, Math.max(50, Math.min(screen.height, screen.width * 2.2) * 0.075)));
+  document.documentElement.style.setProperty("--ad-h", est + 4 + "px"); document.documentElement.classList.add("con-banner");
   try { await P("AdMob").showBanner({ adId: ADS.banner, adSize: "ADAPTIVE_BANNER", position: "BOTTOM_CENTER", margin: 0, isTesting: ADS.prueba }); }
-  catch (e) { bannerOn = false; console.warn("Banner:", e?.message || e); }
+  catch (e) { bannerOn = false; document.documentElement.style.setProperty("--ad-h", "0px"); document.documentElement.classList.remove("con-banner"); console.warn("Banner:", e?.message || e); }
 }
 async function quitarBanner() {
   if (!bannerOn) return; bannerOn = false; tapado = false;
