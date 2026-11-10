@@ -401,7 +401,11 @@ details.compra .det div{display:flex;justify-content:space-between;gap:8px}
 nav.tabs{position:fixed;left:0;right:0;bottom:0;z-index:6;background:var(--surface);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom,0px)}
 nav.tabs .wrap{display:grid;grid-template-columns:repeat(4,1fr)}
 html.tr-carga body{visibility:hidden}
-.grecaptcha-badge{visibility:hidden}   /* el aviso de reCAPTCHA está en la política de privacidad */
+.grecaptcha-badge{visibility:hidden}
+.tk-todos{display:flex;justify-content:flex-end;margin:-4px 0 -6px}
+.vaciar-op{display:flex;gap:12px;align-items:flex-start;padding:10px 0;border-bottom:1px solid var(--line)}
+.vaciar-op input{width:22px;height:22px;margin-top:2px;accent-color:var(--tomate,#d4532b)}
+.vaciar-op small{display:block;color:var(--muted)}   /* el aviso de reCAPTCHA está en la política de privacidad */
 .sel-idioma{font:inherit;padding:8px 10px;border-radius:12px;border:1px solid var(--line);background:var(--surface);color:var(--ink);max-width:48%}
 /* app de Android: el banner de publicidad va fijo abajo, debajo de las pestañas */
 html.es-app{--sab:max(env(safe-area-inset-bottom,0px),var(--safe-area-inset-bottom,0px))}
@@ -798,6 +802,7 @@ main h2::after{content:"";flex:1;min-width:28px;height:2px;background:var(--dash
       </div>
       <input type="file" id="fotoInput" accept="image/*" capture="environment" hidden>
       <input type="file" id="ticketInput" accept="image/*" capture="environment" hidden>
+      <input type="file" id="ticketFotos" accept="image/*" multiple hidden>
       <input type="file" id="ticketArchivo" accept="application/pdf,.pdf,image/*,text/plain,.txt" hidden>
     </div>
   </header>
@@ -961,6 +966,7 @@ main h2::after{content:"";flex:1;min-width:28px;height:2px;background:var(--dash
       </div>
       <h2>Otras opciones</h2>
       <div class="panel">
+        <button class="btn ghost" id="btnVaciar">Vaciar la despensa</button>
         <button class="btn ghost" id="btnDejar">Salir de esta casa</button>
         <button class="btn danger" id="btnBorrarCuenta">Eliminar mi cuenta</button>
       </div>
@@ -1046,6 +1052,17 @@ main h2::after{content:"";flex:1;min-width:28px;height:2px;background:var(--dash
     <div id="repasoCarta"></div>
   </div>
 </dialog>
+<dialog id="dlgVaciar">
+  <form method="dialog" class="sheet">
+    <h3>Vaciar la despensa</h3>
+    <p class="hint" style="margin:0 0 6px">Para empezar de cero. Se borra para toda la casa y no se puede deshacer.</p>
+    <label class="vaciar-op"><input type="checkbox" checked disabled><span><b>Todos los productos y la lista del súper</b><small>Lo que está cargado en la despensa</small></span></label>
+    <label class="vaciar-op"><input type="checkbox" id="vacHist" checked><span><b>El historial de uso</b><small>Lo que Kai aprendió de cuánto les dura cada cosa</small></span></label>
+    <label class="vaciar-op"><input type="checkbox" id="vacGastos"><span><b>Los gastos</b><small>Las compras y tickets cargados en Gastos</small></span></label>
+    <p class="hint" id="vacEstado" style="margin:8px 0 0"></p>
+    <div class="actions"><button class="btn ghost" value="no">Cancelar</button><button class="btn danger" type="button" id="btnVaciarOk">Borrar todo</button></div>
+  </form>
+</dialog>
 <dialog id="dlgPremio">
   <form method="dialog" class="sheet">
     <h3>Tu resumen del mes</h3>
@@ -1105,6 +1122,7 @@ main h2::after{content:"";flex:1;min-width:28px;height:2px;background:var(--dash
     <h3>Cargar el ticket</h3>
     <div class="tk-modos">
       <button class="tk-modo" type="button" data-tkmodo="foto"><span aria-hidden="true">📷</span><span><b>Sacarle una foto</b><small>El ticket de papel del súper</small></span></button>
+      <button class="tk-modo" type="button" data-tkmodo="fotos"><span aria-hidden="true">🖼️</span><span><b>Varias fotos</b><small>Un ticket largo en partes, o varios tickets: elegilos de la galería</small></span></button>
       <button class="tk-modo" type="button" data-tkmodo="archivo"><span aria-hidden="true">📄</span><span><b>Ticket digital</b><small>El PDF que te llegó por mail o bajaste de la app del súper</small></span></button>
       <button class="tk-modo" type="button" data-tkmodo="texto"><span aria-hidden="true">📋</span><span><b>Pegar el texto</b><small>Copiá el ticket del mail y pegalo acá</small></span></button>
     </div>
@@ -1121,6 +1139,7 @@ main h2::after{content:"";flex:1;min-width:28px;height:2px;background:var(--dash
     <h3>Cargar el ticket</h3>
     <img id="tkPrev" class="foto-prev" alt="">
     <div id="tkEstado"></div>
+    <div class="tk-todos" id="tkTodos" hidden><button class="linkbtn" type="button" id="btnTkTodos">Quitar todos</button></div>
     <div id="tkLista" class="foto-lista"></div>
     <div id="tkPie" class="tk-pie" hidden>
       <div class="field"><span>Dónde compraste</span><div class="chips wrapchips" id="tkComercios"></div></div>
@@ -1130,7 +1149,7 @@ main h2::after{content:"";flex:1;min-width:28px;height:2px;background:var(--dash
       <button class="btn" type="button" id="btnTkOk">Cargar</button>
     </div>
     <div class="sheet-actions">
-      <button class="btn ghost" type="button" id="btnTkOtra">Otra foto</button>
+      <button class="btn ghost" type="button" id="btnTkOtra">+ Sumar otra parte</button>
       <button class="btn ghost" type="button" id="btnTkCerrar">Cerrar</button>
     </div>
     <p class="hint" style="margin:0">El ticket se lee en tu teléfono: la foto no se sube a ningún lado.</p>
@@ -4299,6 +4318,36 @@ $("#dlgRepaso").addEventListener("click", e => {
   else if ("repasolista" in b.dataset) { $("#dlgRepaso").close(); tab = "lista"; render(); window.scrollTo(0, 0); }
 });
 
+/* ---------- vaciar la despensa (empezar de cero) ---------- */
+$("#btnVaciar").onclick = () => {
+  if (soyChico()) { toast("En modo chico no se pueden borrar productos"); return; }
+  $("#btnVaciarOk").textContent = "Borrar todo"; $("#btnVaciarOk").dataset.ok = ""; $("#btnVaciarOk").disabled = false; $("#vacEstado").textContent = "";
+  $("#dlgVaciar").showModal();
+};
+$("#btnVaciarOk").onclick = async () => {
+  const b = $("#btnVaciarOk");
+  if (!b.dataset.ok) { b.dataset.ok = "1"; b.textContent = "Tocá de nuevo para confirmar"; return; }
+  b.disabled = true;
+  const cols = ["items", ...($("#vacHist").checked ? ["movimientos"] : []), ...($("#vacGastos").checked ? ["compras"] : [])];
+  let total = 0;
+  try {
+    for (const c of cols) {
+      const snap = await getDocs(collection(db, "hogar", casaId, c));
+      for (let i = 0; i < snap.docs.length; i += 400) {
+        const lote = writeBatch(db);
+        for (const d of snap.docs.slice(i, i + 400)) lote.delete(d.ref);
+        await lote.commit(); total += Math.min(400, snap.docs.length - i);
+        $("#vacEstado").textContent = `Borrando… ${total}`;
+      }
+    }
+    // lo que dependía de los productos (pregunta del día, comida sugerida, menú) también se limpia
+    await updateDoc(casaDoc(), { pregunta: deleteField(), sugerida: deleteField(), menu: deleteField(), alias: deleteField() }).catch(() => {});
+    $("#dlgVaciar").close();
+    toast("✓ La despensa quedó vacía");
+    tab = "despensa"; render(); window.scrollTo(0, 0);
+  } catch (e) { b.disabled = false; $("#vacEstado").textContent = "No se pudo borrar todo: " + (e.message || e); }
+};
+
 /* ---------- idioma ---------- */
 { const sel = $("#selIdioma"); sel.innerHTML = IDIOMAS.map(([k, n]) => `<option value="${k}"${k === idioma ? " selected" : ""}>${n}</option>`).join(""); sel.onchange = () => cambiarIdioma(sel.value); }
 
@@ -4965,10 +5014,12 @@ function emparejar(desc) {
 }
 
 // con la IA activada, Gemini lee el ticket de la foto (mucho mejor con fotos movidas o tickets gastados)
-async function leerTicketIA(file) {
-  const modelos = await prepararIA(), img = await fotoABase64(file);
+async function leerTicketIA(fileOFiles) {
+  const files = Array.isArray(fileOFiles) ? fileOFiles : [fileOFiles];
+  const modelos = await prepararIA(), imgs = await Promise.all(files.slice(0, 6).map(fotoABase64)), img = imgs[0];
   const ar = (config.pais || perfil.pais || "AR") === "AR";
-  const prompt = `Es la foto de un ticket de supermercado${ar ? " de Argentina" : ` (país: ${config.pais || perfil.pais})`}. Leé cada producto comprado.
+  const varias = imgs.length > 1 ? `\nSon ${imgs.length} fotos, en orden: pueden ser partes del mismo ticket largo (se superponen un poco) o tickets distintos. Si un producto aparece en dos fotos porque se superponen, ponelo UNA sola vez. El total es la suma de los totales de los tickets distintos.` : "";
+  const prompt = `Es ${imgs.length > 1 ? "un grupo de fotos" : "la foto"} de un ticket de supermercado${ar ? " de Argentina" : ` (país: ${config.pais || perfil.pais})`}. Leé cada producto comprado.${varias}
 - ${ar ? "Los precios usan punto para miles y coma para decimales (1.234,56)." : "Interpretá los separadores de miles y decimales según el formato del país."}
 - La cantidad puede estar en un renglón aparte, arriba o abajo del producto ("2 x 1.390,00", "0,765 kg x 4.999,00").
 - Si hay un descuento (renglón con monto negativo, "Dto", "Promo", "Bonif"), restáselo al producto que corresponde.
@@ -4978,7 +5029,7 @@ async function leerTicketIA(file) {
 Respondé solo este JSON: {"comercio":"Coto","total":12345.67,"productos":[{"desc":"...","nombre":"...","cantidad":1,"kg":false,"importe":1234.5}]}`;
   let resp, ultimo;
   for (const m of modelos) {
-    try { resp = await conTiempo(m.generateContent([prompt, { inlineData: { data: img.data, mimeType: "image/jpeg" } }]), 45000); break; }
+    try { resp = await conTiempo(m.generateContent([prompt, ...imgs.map(im => ({ inlineData: { data: im.data, mimeType: "image/jpeg" } }))]), 45000 + 15000 * (imgs.length - 1)); break; }
     catch (er) { ultimo = er; if (!/not.?found|404|not supported|unknown model|high demand|overloaded|unavailable|503|500|429|resource.?exhausted|timeout|tard/i.test(String(er?.message))) break; }
   }
   if (!resp) throw ultimo;
@@ -4988,7 +5039,9 @@ Respondé solo este JSON: {"comercio":"Coto","total":12345.67,"productos":[{"des
 }
 
 let ticketRes = [], ticketTotal = 0, comercioTicket = "Supermercado";
-$("#ticketInput").addEventListener("change", e => { const f = e.target.files[0]; e.target.value = ""; if (f) cargarTicket(f); });
+let ticketSumar = false;   // "Sumar otra parte": la foto nueva se agrega a lo que ya se leyó
+$("#ticketInput").addEventListener("change", e => { const f = e.target.files[0]; e.target.value = ""; if (f) cargarTicket([f], ticketSumar); ticketSumar = false; });
+$("#ticketFotos").addEventListener("change", e => { const fs = [...e.target.files].filter(f => /^image\//.test(f.type || "image/")); e.target.value = ""; if (fs.length) cargarTicket(fs, ticketSumar); ticketSumar = false; });
 // ticket digital: texto pegado, PDF del mail o de la app del súper
 const pareceTicket = t => (String(t).match(/\d[\d.]*,\d{2}\b/g) || []).length >= 3;
 async function cargarArchivoTicket(f) {
@@ -5048,53 +5101,65 @@ async function cargarTicketPDF(file) {
     return cargarTicket(new File([blob], "ticket.jpg", { type: "image/jpeg" }));
   } catch (er) { est.innerHTML = `<div class="lookup no"><span><b>No se pudo leer el PDF.</b> ${esc(String(er?.message || er).slice(0, 140))}</span></div>`; }
 }
-async function cargarTicket(file) {
-  ticketRes = []; ticketTotal = 0;
-  $("#tkLista").innerHTML = ""; $("#tkAcc").hidden = true; $("#tkPie").hidden = true; $("#tkPrev").removeAttribute("src");
+async function cargarTicket(entrada, sumar = false) {
+  const files = (Array.isArray(entrada) ? entrada : [entrada]).slice(0, 6);
+  if (!sumar || !ticketRes.length) { sumar = false; ticketRes = []; ticketTotal = 0; $("#tkLista").innerHTML = ""; $("#tkAcc").hidden = true; $("#tkPie").hidden = true; $("#tkPrev").removeAttribute("src"); }
   const est = $("#tkEstado");
   const barra = p => `<div class="lookup"><div class="spin"></div><span>${p}</span></div>`;
+  const n = files.length, deFoto = i => n > 1 ? ` (foto ${i + 1} de ${n})` : "";
   est.innerHTML = barra("Preparando la foto…");
   if (!$("#dlgTicket").open) $("#dlgTicket").showModal();
   try {
     if (iaOn()) {
-      est.innerHTML = barra("Leyendo el ticket…");
+      est.innerHTML = barra(n > 1 ? `Leyendo ${n} fotos…` : "Leyendo el ticket…");
       try {
-        const r = await leerTicketIA(file);
-        if (r.renglones.length) { $("#tkPrev").src = r.url; mostrarTicketLeido(r.renglones, r.total, r.cadena, null, null); return; }
+        const r = await leerTicketIA(files);
+        if (r.renglones.length) { $("#tkPrev").src = r.url; mostrarTicketLeido(r.renglones, r.total, r.cadena, null, null, sumar); return; }
       } catch (e) { console.warn("IA ticket:", e?.message || e); }
     }
-    const img = await prepararImagen(file);
-    $("#tkPrev").src = img.url;
-    ocrProgreso = m => {
-      if (m.status === "recognizing text") est.innerHTML = barra(`Leyendo el ticket… ${Math.round((m.progress || 0) * 100)}%`);
-      else if (/loading|initializ/.test(m.status || "")) est.innerHTML = barra("Preparando el lector (la primera vez tarda un poco más)…");
-    };
+    // sin IA: cada foto se lee en el teléfono y se juntan los renglones (sin repetir los que se superponen)
     const [w, L] = await Promise.all([prepararOCR(), cargarLector()]);
-    const { data } = await w.recognize(img.canvas);
-    const texto = data.text || "";
-    const { renglones, total } = L.leerTicket(texto);
-    const cadena = L.cadenaDe(texto);
-    ticketTotal = total;
+    let renglones = [], total = 0, cadena = null;
+    for (let i = 0; i < n; i++) {
+      est.innerHTML = barra("Preparando la foto…" + deFoto(i));
+      const img = await prepararImagen(files[i]);
+      if (i === 0) $("#tkPrev").src = img.url;
+      ocrProgreso = m => {
+        if (m.status === "recognizing text") est.innerHTML = barra(`Leyendo el ticket… ${Math.round((m.progress || 0) * 100)}%${deFoto(i)}`);
+        else if (/loading|initializ/.test(m.status || "")) est.innerHTML = barra("Preparando el lector (la primera vez tarda un poco más)…");
+      };
+      const { data } = await w.recognize(img.canvas);
+      const texto = data.text || "", r = L.leerTicket(texto);
+      cadena ||= L.cadenaDe(texto);
+      const clave = x => normal(x.desc) + "|" + Math.round(x.importe);
+      const ya = new Set(renglones.slice(-8).map(clave));   // la parte de abajo de una foto puede repetirse arriba de la siguiente
+      renglones.push(...r.renglones.filter(x => !ya.has(clave(x))));
+      total += r.total || 0;
+    }
     if (!renglones.length) {
       est.innerHTML = `<div class="lookup no"><span><b>No pude leer productos en el ticket.</b> Probá con más luz, el ticket estirado y la foto bien de frente, que entre entero.</span></div>`;
       return;
     }
     const eanDic = renglones.some(r => r.ean) ? await L.ean() : null;
-    mostrarTicketLeido(renglones, total, cadena, L, eanDic);
+    mostrarTicketLeido(renglones, total, cadena, L, eanDic, sumar);
   } catch (er) {
     est.innerHTML = `<div class="lookup no"><span><b>No se pudo leer el ticket.</b> ${/fetch|network|load/i.test(String(er?.message)) ? "La primera vez hace falta internet para bajar el lector." : esc(String(er?.message || er).slice(0, 120))}</span></div>`;
   }
 }
-function mostrarTicketLeido(renglones, total, cadena, L, eanDic) {
+function mostrarTicketLeido(renglones, total, cadena, L, eanDic, sumar = false) {
   const est = $("#tkEstado");
-  ticketTotal = total;
+  ticketTotal = sumar ? (ticketTotal || 0) + (total || 0) : total;
   {
-    ticketRes = renglones.map(r => {
+    const nuevos = renglones.map(r => {
       const n = r.nombre ? { nombre: r.nombre, completo: r.nombre } : L.nombrar(r.desc, L.dic, eanDic, r.ean);
       const destino = emparejar(r.desc) || emparejar(n.completo) || emparejar(n.nombre);
       return { ...r, destino, nombre: destino ? items.find(i => i.id === destino).nombre : n.nombre, ok: true };
     });
-    est.innerHTML = `<div class="lookup ok"><span><b>Leí ${ticketRes.length} producto${ticketRes.length > 1 ? "s" : ""}${cadena ? ` del ticket de ${esc(cadena)}` : ""}.</b><small>Revisá que esté bien: podés corregir nombres, cantidades y a qué producto se suma.</small></span></div>`;
+    // al sumar otra parte, lo que ya estaba (y se superpone) no se repite
+    const clave = x => normal(x.desc) + "|" + Math.round(x.importe);
+    const ya = new Set(sumar ? ticketRes.map(clave) : []);
+    ticketRes = sumar ? ticketRes.concat(nuevos.filter(x => !ya.has(clave(x)))) : nuevos;
+    est.innerHTML = `<div class="lookup ok"><span><b>${sumar ? "Ahora hay" : "Leí"} ${ticketRes.length} producto${ticketRes.length > 1 ? "s" : ""}${cadena ? ` del ticket de ${esc(cadena)}` : ""}.</b><small>Revisá que esté bien: podés corregir nombres, cantidades y a qué producto se suma.</small></span></div>`;
     elegirComercioTicket(config.ultimoComercio || "Supermercado");
     pintarTicket();
   }
@@ -5122,6 +5187,8 @@ function pintarTicket() {
   }).join("");
   const sel = ticketRes.filter(r => r.ok);
   const sum = sel.reduce((s, r) => s + r.importe, 0);
+  $("#tkTodos").hidden = ticketRes.length < 2;
+  $("#btnTkTodos").textContent = sel.length ? "Quitar todos" : "Marcar todos";
   $("#tkPie").hidden = false;
   $("#tkTotal").textContent = pesos(ticketTotal || sum);
   $("#tkTotalTxt").textContent = ticketTotal ? (Math.abs(ticketTotal - ticketRes.reduce((s, r) => s + r.importe, 0)) > 1 ? "Total del ticket (algunos renglones pueden no haberse leído)" : "Total del ticket") : "Total de lo leído";
@@ -5151,14 +5218,17 @@ document.addEventListener("click", e => {
   if (e.target.closest("[data-ticket]")) { $("#tkTextoForm").hidden = true; $("#tkTexto").value = ""; $("#dlgTicketModo").showModal(); return; }
   const m = e.target.closest("[data-tkmodo]"); if (!m) return;
   if (m.dataset.tkmodo === "foto") { $("#dlgTicketModo").close(); $("#ticketInput").click(); }
+  else if (m.dataset.tkmodo === "fotos") { $("#dlgTicketModo").close(); $("#ticketFotos").click(); }
   else if (m.dataset.tkmodo === "archivo") { $("#dlgTicketModo").close(); $("#ticketArchivo").click(); }
   else { $("#tkTextoForm").hidden = false; $("#tkTexto").focus(); }
 });
 $("#tkModoNo").onclick = () => $("#dlgTicketModo").close();
 $("#tkTextoForm").addEventListener("submit", e => { e.preventDefault(); const t = $("#tkTexto").value.trim(); if (!t) return; $("#dlgTicketModo").close(); cargarTicketTexto(t); });
 $("#ticketArchivo").addEventListener("change", e => { const f = e.target.files[0]; e.target.value = ""; if (f) cargarArchivoTicket(f); });
-$("#btnTkOtra").onclick = () => $("#ticketInput").click();
+// sumar otra parte del mismo ticket (o otro ticket) a lo que ya se leyó
+$("#btnTkOtra").onclick = () => { ticketSumar = ticketRes.length > 0; $("#ticketInput").click(); };
 $("#btnTkCerrar").onclick = () => $("#dlgTicket").close();
+$("#btnTkTodos").onclick = () => { const marcar = !ticketRes.some(r => r.ok); ticketRes.forEach(r => r.ok = marcar); pintarTicket(); };
 $("#btnTkOk").onclick = () => {
   medir(ticketDigital ? "ticketsDigital" : "tickets"); ticketDigital = false;
   const sel = ticketRes.filter(r => r.ok && limpiar(r.nombre));
