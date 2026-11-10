@@ -417,6 +417,9 @@ html.con-banner main{padding-bottom:calc(96px + var(--ad-h,0px) + var(--sab))}
 html.es-app .fab{bottom:calc(var(--nav-h,84px) + 14px)}
 html.con-banner .fab{bottom:calc(var(--nav-h,84px) + 14px)}
 html.es-app .toast{bottom:calc(var(--nav-h,84px) + 86px)}
+/* las ventanas que suben desde abajo quedan arriba del banner, nunca tapadas */
+html.con-banner dialog{margin-bottom:var(--ad-zona,0px);max-height:calc(92vh - var(--ad-zona,0px))}
+html.con-banner dialog .sheet{padding-bottom:20px}
 html.con-banner .ad-barra{bottom:var(--sab);height:var(--ad-h,0px);max-width:none;padding:0;z-index:7}
 html.con-banner .ad-barra .ad-card{height:100%;margin:0;border-radius:0;padding:14px 40px 4px 12px;gap:10px;box-shadow:0 -1px 0 var(--line)}
 html.con-banner .ad-barra .ad-card img{width:38px;height:38px;border-radius:8px}
@@ -4354,8 +4357,11 @@ $("#btnVaciarOk").onclick = async () => {
 /* ---------- app: los botones flotantes siempre arriba de las pestañas y el banner ---------- */
 function anclarFlotantes() {
   const nav = document.querySelector("nav.tabs"); if (!nav || nav.hidden || !nav.offsetHeight) return;
-  const libre = Math.max(0, Math.round(innerHeight - nav.getBoundingClientRect().top));
+  const r = nav.getBoundingClientRect();
+  const libre = Math.max(0, Math.round(innerHeight - r.top));
   document.documentElement.style.setProperty("--nav-h", libre + "px");
+  // lo que ocupa el banner (y la barra del sistema) debajo de las pestañas: las hojas y ventanas se apoyan arriba
+  document.documentElement.style.setProperty("--ad-zona", Math.max(0, Math.round(innerHeight - r.bottom)) + "px");
 }
 if (esApp) {
   addEventListener("resize", anclarFlotantes);
