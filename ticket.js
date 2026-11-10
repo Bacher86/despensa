@@ -54,7 +54,8 @@ function arreglarNumeros(l) {
     .replace(/^(\d+[.,])\s(\d{3})(?=\s*(kgs?|k|un|u|x)\b)/i, "$1$2")
     .replace(/(\d)\s+([.,]\d{2})(?=\D*$)/, "$1$2")
     .replace(/(\d)\s([.,])\s?(\d{2})(?=\D*$)/, "$1$2$3")
-    .replace(/(\d{1,3})\s(\d{3}[.,]\d{2})(?=\D*$)/, "$1.$2");
+    .replace(/(\d{1,3})\s(\d{3}[.,]\d{2})(?=\D*$)/, "$1.$2")
+    .replace(/(\d)\/(\d{3}[.,]\d{2})(?=\D*$)/, "$1.$2");
 }
 
 const PESABLE = /\b(queso|jamon|fiambre|salame|salamin|mortadela|bondiola|carne|picada|asado|vacio|nalga|bola de lomo|cuadril|pollo|pechuga|suprema|muslo|cerdo|bife|milanesa|osobuco|papa|batata|cebolla|tomate|zanahoria|zapallo|lechuga|banana|manzana|naranja|mandarina|pera|limon|frutilla|uva|kiwi|palta|morron|pimiento|verdura|fruta|x ?kg|granel|suelto)\b/i;
@@ -62,8 +63,10 @@ const PESABLE = /\b(queso|jamon|fiambre|salame|salamin|mortadela|bondiola|carne|
 export function leerTicket(texto) {
   const lineas = String(texto || "").split(/\n/).map(l => arreglarNumeros(l.replace(/[|_~=]+/g, " ").replace(/\s+/g, " ").trim())).filter(Boolean);
   const filas = []; let total = 0, subtotal = 0, eanPend = null, fin = false;
+  let descPend = null;   // nombre de producto sin precio en su renglón (Jumbo/Disco/Vea nuevos: el importe viene abajo, con la cantidad)
   for (const lOrig of lineas) {
-    let l = lOrig;
+    // la alícuota de IVA al final del nombre, "(10,50)" o "(21,00)", no es un precio
+    let l = lOrig.replace(/\(\s*(?:10|21|27|2|5)[.,]\d{1,2}\s*[)\]7J]?\s*$/, "").trim();
     const n = normal(l);
     if (fin) continue;
     // pie del ticket: a partir de acá no hay más productos
@@ -75,16 +78,41 @@ export function leerTicket(texto) {
     // código de barras solo en su renglón (Jumbo, Disco, Vea)
     const soloCod = l.match(/^\s*(\d{8}|\d{12,14})\s*$/);
     if (soloCod) { eanPend = soloCod[1]; continue; }
+    // Jumbo/Disco/Vea nuevos: "1x6.600,00 / 4006000050188    6.600,00" aunque la cantidad se haya leído mal:
+    // si hay un nombre esperando, un código después de "/" y un importe al final, es el producto de arriba
+    if (descPend) {
+      const lj = l.replace(/^[^\d]{1,3}(?=\d)/, "");
+      const cj = lj.match(/\/\s*(\d{5,14})\b/), fj = lj.match(RE_PRECIO_FIN);
+      if (cj && fj && fj.index > cj.index) {
+        const qj = lj.match(RE_CANT);
+        filas.push({ tipo: "prod", desc: descPend, importe: parsePrecio(fj[1]), ean: cj[1].length >= 8 ? cj[1] : null,
+          q: qj ? { cant: parseCant(qj[1]), precio: parsePrecio(qj[3]), kg: parseCant(qj[1]) % 1 !== 0 && /[.,]\d{3}$/.test(qj[1]), dec3: /[.,]\d{3}$/.test(qj[1]) } : null });
+        descPend = null; continue;
+      }
+    }
     // renglón de cantidad: "2 x 1.390,00", "2 UN x 1.390,00", "1,235 kg x 2.400,00 /kg", "2,000 x 1.100,00"
     const qc = l.match(RE_CANT);
     const letras = (l.replace(RE_CANT, "").replace(/\/?\s*\b(kgs?|un|u|unid|c\/u|x|precio|p\.?\s?unit)\b\.?/gi, "").match(/[a-zA-ZáéíóúñÑ]/g) || []).length;
     if (qc && letras < 3) {
       const cant = parseCant(qc[1]), kgMarca = /^k/i.test(qc[2] || "") || /^k/i.test(qc[4] || "");
+      // "0,600x7.599,00 / 99279      4.559,40": cantidad, precio, código y el importe del producto de arriba
+      const resto = l.slice(qc.index + qc[0].length), fp = resto.match(RE_PRECIO_FIN), cod = resto.match(/\/\s*(\d{4,14})\b/);
+      if (descPend && fp) {
+        const precio = parsePrecio(qc[3]);
+        filas.push({ tipo: "prod", desc: descPend, importe: parsePrecio(fp[1]), ean: cod && cod[1].length >= 8 ? cod[1] : null,
+          q: { cant, precio, kg: kgMarca || (cant % 1 !== 0 && /[.,]\d{3}$/.test(qc[1])), dec3: /[.,]\d{3}$/.test(qc[1]) } });
+        descPend = null; continue;
+      }
       filas.push({ tipo: "cant", cant, precio: parsePrecio(qc[3]), kg: kgMarca || (cant % 1 !== 0 && /[.,]\d{3}$/.test(qc[1])), dec3: /[.,]\d{3}$/.test(qc[1]) });
       continue;
     }
     const mp = l.match(RE_PRECIO_FIN);
-    if (!mp) continue;
+    if (!mp) {
+      const letrasL = (l.match(/[a-zA-ZáéíóúñÑ]/g) || []).length;
+      descPend = letrasL >= 3 && !NO_PRODUCTO.test(n) ? l.replace(/\s\(\s*\d.*$/, "").replace(/\bS\/E\b/gi, " ").replace(/\s+/g, " ").trim() : null;
+      continue;
+    }
+    descPend = null;
     let importe = parsePrecio(mp[1]);
     let desc = l.slice(0, mp.index);
     // descuentos: se restan del producto de arriba
@@ -101,10 +129,13 @@ export function leerTicket(texto) {
     if (dos) {
       const pu = parsePrecio(dos[1]); let imp = parsePrecio(dos[2]);
       const lead = desc.match(/^\s*(\d+(?:[.,]\d{1,3})?)\s+(?=[A-Za-z])/);
-      const c = lead ? parseCant(lead[1]) : pu > 0 ? imp / pu : 1;
+      let c = lead ? parseCant(lead[1]) : pu > 0 ? imp / pu : 1;
+      // sin cantidad adelante, el primer número solo es precio unitario si la cuenta da un número entero de unidades
+      // (y no es la alícuota de IVA: 10,50 / 21,00 / 27,00)
+      if (!lead && ([10.5, 21, 27, 2.5, 5].includes(pu) || Math.abs(c - Math.round(c)) > 0.02 || c > 60)) c = NaN;
       const pu0 = Math.floor(pu), alt = sinPrimerDigito(imp);
       if (pu > 0 && !cerca(imp, pu * c) && alt != null && (cerca(alt, pu * c) || cerca(alt, pu0 * c))) imp = alt;
-      if (pu > 0 && (cerca(imp, pu * c) || cerca(imp, pu0 * c))) { q = { cant: c, precio: pu, kg: c % 1 !== 0 }; desc = l.slice(0, dos.index); if (lead) desc = desc.slice(lead[0].length); importe = imp; }
+      if (pu > 0 && c > 0 && (cerca(imp, pu * c) || cerca(imp, pu0 * c))) { q = { cant: c, precio: pu, kg: c % 1 !== 0 }; desc = l.slice(0, dos.index); if (lead) desc = desc.slice(lead[0].length); importe = imp; }
     }
     // cantidad en el mismo renglón: "LECHE 2 x 1.490,00  2.980,00"
     const mi = desc.match(/(\d+(?:[.,]\d{1,3})?)\s*(kgs?|k|un|u)?\s*[xX*]\s*\$?\s*([\d.,]+)\s*$/i);
@@ -219,6 +250,10 @@ const CADENAS = [["Coto", /\bcoto\b/], ["Carrefour", /carrefour|\binc s ?a\b/], 
 export function cadenaDe(texto) {
   const n = normal(String(texto || "").split("\n").slice(0, 12).join(" "));
   for (const [nom, rx] of CADENAS) if (rx.test(n)) return nom;
+  // a veces el nombre solo aparece abajo (club de puntos: "Jumbo Más", "Disco Más")
+  const pie = normal(texto);
+  if (/jumbo ?mas|\bjumbo\b/.test(pie)) return "Jumbo";
+  if (/disco ?mas/.test(pie)) return "Disco";
   return null;
 }
 

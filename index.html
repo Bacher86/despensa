@@ -4852,8 +4852,9 @@ async function prepararImagen(file) {
   for (let i = 0, j = 0; i < ds.length; i += 4, j++) { const mx = Math.max(ds[i], ds[i + 1], ds[i + 2]), mn = Math.min(ds[i], ds[i + 1], ds[i + 2]); sat[j] = mx < 25 ? 255 : (mx - mn) / mx * 255; }
   const ss = promedio(sat, sw, sh, 6), ms = promedio(gs, sw, sh, 6);
   const oS = otsuDe(ss), oB = otsuDe(ms);
-  let papel;
-  if (oS.sep > 0.6 && oS.t > 15 && oS.t < 160) papel = (x, y) => ss[y * sw + x] <= oS.t;
+  let papel, porColor = false;
+  if (oS.sep > 0.6 && oS.t > 40 && oS.t < 160) {   // fondo con color de verdad (no una pared apenas amarillenta)
+    papel = (x, y) => ss[y * sw + x] <= oS.t; porColor = true; }
   else if (oB.sep > 0.6) papel = (x, y) => ms[y * sw + x] > oB.t;
   else papel = () => true;
   // caja del ticket: filas y columnas donde la mayoría es papel
@@ -4870,7 +4871,7 @@ async function prepararImagen(file) {
   // inclinación: probamos ángulos y nos quedamos con el que deja los renglones más "parejos"
   const fs = fondo(gs, sw, sh, 12);
   const tinta = [];
-  for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) { const i = y * sw + x; if (papel(x, y) && gs[i] < fs[i] * 0.72) tinta.push(x, y); }
+  for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) { const i = y * sw + x; if ((!porColor || papel(x, y)) && gs[i] < fs[i] * 0.72) tinta.push(x, y); }
   let ang = 0;
   if (tinta.length > 200) {
     let mejor = -1;
@@ -4911,8 +4912,10 @@ async function prepararImagen(file) {
   const out = g2.getImageData(0, 0, w, h), px = out.data;
   const n = new Float32Array(w * h);
   for (let i = 0; i < n.length; i++) n[i] = f[i] > 30 ? Math.min(1, g[i] / f[i]) : 1;   // 1 = papel, más bajo = tinta
-  // máscara achicada un poco para no quedarnos con el borde del papel
-  const mraw = gris(cm2), mk = promedio(mraw, w, h, Math.round(w / 60));
+  // máscara achicada un poco para no quedarnos con el borde del papel.
+  // Solo se borra lo de afuera cuando el fondo tiene color (mesa): si el fondo es blanco o gris (pared, mantel),
+  // el brillo confunde la sombra del ticket con "fondo" y se comería las letras.
+  const mraw = gris(cm2), mk = porColor ? promedio(mraw, w, h, Math.round(w / 60)) : new Float32Array(w * h).fill(255);
   // estiramos el contraste: el 1% más oscuro pasa a negro, el papel a blanco
   const hs = new Array(101).fill(0); let tot = 0;
   for (let i = 0; i < n.length; i++) if (mk[i] > 250) { hs[Math.round(n[i] * 100)]++; tot++; }
