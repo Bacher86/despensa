@@ -1,0 +1,15 @@
+{
+  "appId": "ar.kai.despensa",
+  "appName": "Kai",
+  "webDir": "www",
+  "server": {
+    "url": "https://bacher86.github.io/despensa/",
+    "androidScheme": "https",
+    "allowNavigation": ["bacher86.github.io", "casa-48f64.firebaseapp.com"]
+  },
+  "android": { "backgroundColor": "#f2f3ec" },
+  "plugins": {
+    "SystemBars": { "style": "DEFAULT", "insetsHandling": "css" },
+    "FirebaseAuthentication": { "skipNativeAuth": true, "providers": ["google.com"] }
+  }
+}

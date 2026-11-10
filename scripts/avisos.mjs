@@ -122,7 +122,7 @@ async function main() {
   const casas = await db.collection("hogar").get();
   for (const casa of casas.docs) {
     const mSnap = await casa.ref.collection("miembros").get();
-    const miembros = mSnap.docs.map(d => ({ uid: d.id, ref: d.ref, ...d.data() })).filter(m => Array.isArray(m.fcm) && m.fcm.length);
+    const miembros = mSnap.docs.map(d => ({ uid: d.id, ref: d.ref, ...d.data() })).filter(m => (Array.isArray(m.fcm) && m.fcm.length) || (Array.isArray(m.fcmApp) && m.fcmApp.length));
     if (!miembros.length) continue;
     const config = casa.data() || {};
     const avisos = [];   // { title, body, tab, tag, salvo?, solo? }
@@ -213,6 +213,21 @@ async function main() {
         if (a.salvo && primer(m.nombre) === a.salvo) continue;
         if (a.salvoUid && m.uid === a.salvoUid) continue;
         if (a.solo && !a.solo.has(m.uid)) continue;
+        const datos = { title: a.title.slice(0, 120), body: a.body, tab: a.tab, tag: a.tag, ...(a.tipo ? { tipo: a.tipo } : {}), ...(a.extra || {}) };
+        // app de Android: notificación nativa (la muestra el sistema aunque la app esté cerrada)
+        const toks = (m.fcmApp || []).slice(-3);
+        if (toks.length) {
+          const ra = await fcm.sendEachForMulticast({
+            tokens: toks,
+            notification: { title: datos.title, body: datos.body },
+            data: datos,
+            android: { priority: "high", ttl: 20 * 3600 * 1000, collapseKey: datos.tag, notification: { channelId: "avisos", tag: datos.tag, color: "#3f4a20" } },
+          });
+          total += ra.successCount;
+          const malosA = ra.responses.map((x, i) => !x.success && /not-registered|invalid-registration|invalid-argument/.test(x.error?.code || "") ? toks[i] : null).filter(Boolean);
+          if (malosA.length) await m.ref.update({ fcmApp: FieldValue.arrayRemove(...malosA) }).catch(() => {});
+        }
+        if (!m.fcm?.length) continue;
         const r = await fcm.sendEachForMulticast({
           tokens: m.fcm.slice(-5),
           data: { title: a.title.slice(0, 120), body: a.body, tab: a.tab, tag: a.tag, ...(a.tipo ? { tipo: a.tipo } : {}), ...(a.extra || {}) },
