@@ -12,6 +12,20 @@ import { initializeApp, cert } from "firebase-admin/app";
 import { getFirestore, Timestamp, FieldValue } from "firebase-admin/firestore";
 import { getMessaging } from "firebase-admin/messaging";
 import { hogarDe, tasaBase } from "../consumo.js";
+import { crearTraductor } from "../traductor.js";
+import { readFileSync } from "fs";
+
+// idiomas: cada miembro guarda el suyo (es-AR = el texto original)
+const TR = {};
+for (const l of ["es", "en", "pt"]) { try { TR[l] = crearTraductor(JSON.parse(readFileSync(new URL(`../i18n/${l}.json`, import.meta.url), "utf8"))); } catch (e) { console.log("Sin diccionario", l, e.message); } }
+export function traducir(txt, idioma) {
+  const b = !idioma || idioma === "es-AR" ? null : idioma;
+  if (!b || !TR[b] || !txt) return txt;
+  let x = TR[b](txt) ?? txt;
+  if (b === "en") x = x.replace(/ y (\d+) más\b/g, " and $1 more").replace(/ y /g, " and ");
+  if (b === "pt") x = x.replace(/ y (\d+) más\b/g, " e mais $1").replace(/ y /g, " e ");
+  return x;
+}
 
 const DIA = 86400000;
 const num = v => { const n = parseFloat(String(v ?? "").replace(",", ".")); return isFinite(n) ? n : 0; };
@@ -103,6 +117,13 @@ export function pronostico(items, movs, config = {}, ahora = Date.now()) {
 }
 const textoDura = d => d < 1.5 ? "menos de 2 días" : d < 13 ? `~${Math.round(d)} días` : d < 45 ? `~${Math.round(d / 7)} semana${Math.round(d / 7) > 1 ? "s" : ""}` : `~${Math.round(d / 30)} mes${Math.round(d / 30) > 1 ? "es" : ""}`;
 // fecha y hora de Argentina (UTC−3, sin horario de verano)
+// fecha y hora en la zona horaria de cada casa (las casas viejas, sin zona guardada, son de Argentina)
+export function horaEn(tz, t = Date.now()) {
+  try {
+    const p = Object.fromEntries(new Intl.DateTimeFormat("en-CA", { timeZone: tz || "America/Argentina/Buenos_Aires", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", weekday: "short", hourCycle: "h23" }).formatToParts(new Date(t)).map(x => [x.type, x.value]));
+    return { fecha: `${p.year}-${p.month}-${p.day}`, hora: Number(p.hour) % 24, min: Number(p.minute), dia: ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].indexOf(p.weekday) };
+  } catch { return horaAR(t); }
+}
 export const horaAR = (t = Date.now()) => { const d = new Date(t - 3 * 3600000); return { fecha: d.toISOString().slice(0, 10), hora: d.getUTCHours(), dia: d.getUTCDay(), min: d.getUTCMinutes() }; };
 const diasHasta = (fecha, hoy) => Math.round((Date.parse(fecha + "T00:00:00Z") - Date.parse(hoy + "T00:00:00Z")) / DIA);
 
@@ -111,12 +132,11 @@ async function main() {
   const app = initializeApp({ credential: cert(JSON.parse(process.env.FIREBASE_SA)) });
   const db = getFirestore(app, "default");
   const fcm = getMessaging(app);
-  const ahora = Date.now(), ar = horaAR(ahora);
+  const ahora = Date.now();
   const estadoRef = db.doc("sistema/avisos");
   const est = (await estadoRef.get()).data() || {};
   const desde = Math.max(ms(est.ultimo) || ahora - 30 * 60000, ahora - 6 * 3600000);
   const enviados = Object.fromEntries(Object.entries(est.enviados || {}).filter(([, t]) => ahora - t < 4 * DIA));
-  const diario = ar.hora >= 10 && est.diario !== ar.fecha;          // primera corrida después de las 10
   let total = 0;
 
   const casas = await db.collection("hogar").get();
@@ -125,6 +145,9 @@ async function main() {
     const miembros = mSnap.docs.map(d => ({ uid: d.id, ref: d.ref, ...d.data() })).filter(m => (Array.isArray(m.fcm) && m.fcm.length) || (Array.isArray(m.fcmApp) && m.fcmApp.length));
     if (!miembros.length) continue;
     const config = casa.data() || {};
+    const ar = horaEn(config.tz, ahora);                                     // hora local de la casa
+    const diario = ar.hora >= 10 && !enviados[`${casa.id}:diario:${ar.fecha}`];   // primera vuelta después de las 10
+    if (diario) enviados[`${casa.id}:diario:${ar.fecha}`] = ahora;
     const avisos = [];   // { title, body, tab, tag, salvo?, solo? }
     let itemsCasa = null;
 
@@ -213,7 +236,7 @@ async function main() {
         if (a.salvo && primer(m.nombre) === a.salvo) continue;
         if (a.salvoUid && m.uid === a.salvoUid) continue;
         if (a.solo && !a.solo.has(m.uid)) continue;
-        const datos = { title: a.title.slice(0, 120), body: a.body, tab: a.tab, tag: a.tag, ...(a.tipo ? { tipo: a.tipo } : {}), ...(a.extra || {}) };
+        const datos = { title: traducir(a.title, m.idioma).slice(0, 120), body: traducir(a.body, m.idioma), tab: a.tab, tag: a.tag, ...(a.tipo ? { tipo: a.tipo } : {}), ...(a.extra || {}) };
         // app de Android: notificación nativa (la muestra el sistema aunque la app esté cerrada)
         const toks = (m.fcmApp || []).slice(-3);
         if (toks.length) {
@@ -230,7 +253,7 @@ async function main() {
         if (!m.fcm?.length) continue;
         const r = await fcm.sendEachForMulticast({
           tokens: m.fcm.slice(-5),
-          data: { title: a.title.slice(0, 120), body: a.body, tab: a.tab, tag: a.tag, ...(a.tipo ? { tipo: a.tipo } : {}), ...(a.extra || {}) },
+          data: datos,
           webpush: { headers: { Urgency: "high", TTL: String(20 * 3600) } },
         });
         total += r.successCount;
@@ -239,7 +262,7 @@ async function main() {
       }
     }
   }
-  await estadoRef.set({ ultimo: ahora, enviados, ...(diario ? { diario: ar.fecha } : {}) }, { merge: false });
+  await estadoRef.set({ ultimo: ahora, enviados }, { merge: false });
   console.log(`Listo: ${total} avisos entregados.`);
 }
 if (process.argv[1]?.endsWith("avisos.mjs")) main().catch(e => { console.error(e); process.exit(1); });

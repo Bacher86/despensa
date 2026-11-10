@@ -1689,7 +1689,7 @@ async function unirse(inv) {
 async function crearCasa(nombre) {
   const id = doc(collection(db, "hogar")).id;
   const b = writeBatch(db);
-  b.set(doc(db, "hogar", id), { nombre, creador: user.uid, creado: serverTimestamp(), pais: perfil.pais || (perfil.provincia ? "AR" : ""), provincia: perfil.provincia || "", barrio: perfil.barrio || "" });
+  b.set(doc(db, "hogar", id), { nombre, creador: user.uid, creado: serverTimestamp(), tz: (() => { try { return Intl.DateTimeFormat().resolvedOptions().timeZone || ""; } catch { return ""; } })(), pais: perfil.pais || (perfil.provincia ? "AR" : ""), provincia: perfil.provincia || "", barrio: perfil.barrio || "" });
   b.set(doc(db, "hogar", id, "miembros", user.uid), { ...miembroDatos(), rol: "admin", desde: serverTimestamp() });
   b.set(perfilRef(), { casa: id }, { merge: true });
   try { await b.commit(); } catch (err) { mostrarOnb("No se pudo crear la casa: " + err.message); return; }
@@ -1761,8 +1761,11 @@ function registrarVisita() {
 function registrarVisitaCasa() {
   if (!user || !casaId) return;
   const k = "vistoCasa:" + casaId + ":" + user.uid, hoy = new Date().toISOString().slice(0, 10);
-  if (lsGet(k) === hoy) return;
-  updateDoc(doc(db, "hogar", casaId, "miembros", user.uid), { visto: serverTimestamp() }).then(() => lsSet(k, hoy)).catch(() => {});
+  if (lsGet(k) === hoy + idioma) return;   // también guarda el idioma, para que los avisos lleguen en el idioma de cada uno
+  updateDoc(doc(db, "hogar", casaId, "miembros", user.uid), { visto: serverTimestamp(), idioma }).then(() => lsSet(k, hoy + idioma)).catch(() => {});
+  // la zona horaria de la casa (la de quien la creó): los avisos programados salen a la hora local
+  const tz = (() => { try { return Intl.DateTimeFormat().resolvedOptions().timeZone || ""; } catch { return ""; } })();
+  if (tz && config.creador === user.uid && config.tz !== tz) updateDoc(casaDoc(), { tz }).catch(() => {});
 }
 const ADMINS = ["uriel.bacher@gmail.com"];   // emails que ven el botón del panel
 function revisarAdmin() {
@@ -3425,7 +3428,7 @@ async function registrarPush() {
     const token = await tokenAvisos(); if (!token) return;
     const k = "fcmApp:" + casaId + ":" + user.uid;
     if (lsGet(k) === token) return;
-    try { await updateDoc(doc(db, "hogar", casaId, "miembros", user.uid), { fcmApp: arrayUnion(token), resumen: resCfg() }); lsSet(k, token); lsSet("fcmApp:token", token); } catch {}
+    try { await updateDoc(doc(db, "hogar", casaId, "miembros", user.uid), { fcmApp: arrayUnion(token), resumen: resCfg(), idioma }); lsSet(k, token); lsSet("fcmApp:token", token); } catch {}
     return;
   }
   if (!VAPID || !casaId || !user || !puedeNotificar() || !("serviceWorker" in navigator)) return;
@@ -3437,7 +3440,7 @@ async function registrarPush() {
     if (!token) return;
     const k = "fcm:" + casaId + ":" + user.uid;
     if (lsGet(k) === token) return;
-    await updateDoc(doc(db, "hogar", casaId, "miembros", user.uid), { fcm: arrayUnion(token), resumen: resCfg() });
+    await updateDoc(doc(db, "hogar", casaId, "miembros", user.uid), { fcm: arrayUnion(token), resumen: resCfg(), idioma });
     lsSet(k, token); lsSet("fcm:token", token);
   } catch (e) { console.warn("Avisos push:", e?.message || e); }
 }
