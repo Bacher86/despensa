@@ -2842,7 +2842,7 @@ $("#btnALista").onclick = async () => {
    Usa Gemini a través de Firebase AI Logic (se activa en la consola de Firebase).
    RECAPTCHA_KEY: la clave de App Check. Firebase la exige para usar la IA (ver README, parte 5).
    RECAPTCHA_TIPO: "v3" (reCAPTCHA v3, gratis y sin tarjeta) o "enterprise".  */
-const RECAPTCHA_KEY = "6Le_6BkuAAAAAJMZNEVDqmX3y3HQpTrbg-CjbaPf";   // reCAPTCHA v3 (App Check) para bacher86.github.io
+const RECAPTCHA_KEY = "";   // Firebase ya no acepta reCAPTCHA v3 clásico; cuando haya clave de reCAPTCHA Enterprise va acá (RECAPTCHA_TIPO = "enterprise")
 const RECAPTCHA_TIPO = "v3";
 // La IA (foto de la heladera, ticket con IA, ideas) funciona con Firebase AI Logic activado en la consola.
 // App Check es opcional. Mientras se prueba, la ven solo los admins; con IA_PUBLICA = true la ven todos.
