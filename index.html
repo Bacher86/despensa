@@ -400,6 +400,8 @@ details.compra .det div{display:flex;justify-content:space-between;gap:8px}
 .fab{position:fixed;right:max(16px,calc(50% - 304px));bottom:calc(84px + env(safe-area-inset-bottom,0px));width:58px;height:58px;border-radius:18px;border:0;background:var(--accent);color:var(--accent-ink);font-size:2rem;line-height:1;box-shadow:0 6px 18px rgba(0,0,0,.18);z-index:6}
 nav.tabs{position:fixed;left:0;right:0;bottom:0;z-index:6;background:var(--surface);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom,0px)}
 nav.tabs .wrap{display:grid;grid-template-columns:repeat(4,1fr)}
+html.tr-carga body{visibility:hidden}
+.sel-idioma{font:inherit;padding:8px 10px;border-radius:12px;border:1px solid var(--line);background:var(--surface);color:var(--ink);max-width:48%}
 /* app de Android: el banner de publicidad va fijo abajo, debajo de las pestañas */
 html.es-app{--sab:max(env(safe-area-inset-bottom,0px),var(--safe-area-inset-bottom,0px))}
 html.es-app .install{display:none!important}
@@ -852,6 +854,7 @@ main h2::after{content:"";flex:1;min-width:28px;height:2px;background:var(--dash
       </div>
       <h2>Cómo se ve</h2>
       <div class="panel vista-aj">
+        <label class="sw-fila"><span><b>Idioma</b><small>Cambia el idioma de toda la app</small></span><select id="selIdioma" translate="no" class="sel-idioma"></select></label>
         <label class="sw-fila"><span><b>Letra grande</b><small>Todo más grande y fácil de leer</small></span><input type="checkbox" id="chkLetra"></label>
         <label class="sw-fila"><span><b>Modo simple</b><small>Solo la despensa y la lista, con Hay · Poco · No hay. Ideal para abuelos o para quien recién empieza</small></span><input type="checkbox" id="chkSimple"></label>
       </div>
@@ -1235,7 +1238,7 @@ main h2::after{content:"";flex:1;min-width:28px;height:2px;background:var(--dash
     <p><b>Lo que compartís con la comunidad.</b> Cuando cargás un producto nuevo, su nombre y su categoría se suman al catálogo que ven todos, para que a otros les aparezca como sugerencia. No se comparte quién lo cargó ni cuánto tenés.</p>
     <p><b>Publicidad.</b> La app de Android muestra anuncios de Google AdMob y de comercios de tu zona. Google puede usar el identificador de publicidad del celular para mostrarlos; los comercios no reciben ningún dato tuyo.</p>
     <p><b>Tus derechos.</b> Podés ver y corregir tus datos en Más → Tus datos, y borrar tu cuenta cuando quieras desde Más → Eliminar mi cuenta. <span id="privContacto"></span></p>
-    <p class="hint" style="margin:0">Ley 25.326 de Protección de Datos Personales. La Agencia de Acceso a la Información Pública es el órgano de control.</p>
+    <p class="hint" style="margin:0">Cumplimos las leyes de protección de datos personales de cada país (en Argentina, la Ley 25.326; en Europa, el RGPD).</p>
     <button class="btn" type="button" id="btnPrivOk">Entendido</button>
   </div>
 </dialog>
@@ -1285,6 +1288,7 @@ main h2::after{content:"";flex:1;min-width:28px;height:2px;background:var(--dash
   }, 12000);
 </script>
 <script type="module">
+import { idioma, LOC, t, IDIOMAS, cambiarIdioma } from "./i18n.js";
 import { initializeApp } from "https://www.gstatic.com/firebasejs/13.0.0/firebase-app.js";
 import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect, signInWithCredential, onAuthStateChanged, signOut, createUserWithEmailAndPassword, signInWithEmailAndPassword, sendPasswordResetEmail, updateProfile, deleteUser } from "https://www.gstatic.com/firebasejs/13.0.0/firebase-auth.js";
 import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager, collection, doc, getDoc, getDocs, onSnapshot, addDoc, updateDoc, deleteDoc, setDoc, increment, serverTimestamp, writeBatch, deleteField, arrayUnion, arrayRemove, query, where, orderBy, limit, Timestamp } from "https://www.gstatic.com/firebasejs/13.0.0/firebase-firestore.js";
@@ -1320,9 +1324,12 @@ const DIA = 86400000;
 const $ = s => document.querySelector(s);
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const num = v => { const n = parseFloat(String(v ?? "").replace(",", ".")); return isFinite(n) ? n : 0; };
-const fmt = n => Number((+n || 0).toFixed(2)).toLocaleString("es-AR");
-const pct = (x, dec = 1) => `${x > 0 ? "+" : ""}${(x * 100).toLocaleString("es-AR", { maximumFractionDigits: dec, minimumFractionDigits: dec })}%`;
-const pesos = n => (+n || 0).toLocaleString("es-AR", { style: "currency", currency: "ARS", maximumFractionDigits: 0 });
+const fmt = n => Number((+n || 0).toFixed(2)).toLocaleString(LOC);
+const pct = (x, dec = 1) => `${x > 0 ? "+" : ""}${(x * 100).toLocaleString(LOC, { maximumFractionDigits: dec, minimumFractionDigits: dec })}%`;
+// moneda según el país de la casa (o del perfil)
+const MONEDAS = { AR: "ARS", UY: "UYU", PY: "PYG", CL: "CLP", BO: "BOB", PE: "PEN", EC: "USD", CO: "COP", VE: "VES", MX: "MXN", GT: "GTQ", HN: "HNL", SV: "USD", NI: "NIO", CR: "CRC", PA: "USD", CU: "CUP", DO: "DOP", PR: "USD", BR: "BRL", PT: "EUR", ES: "EUR", US: "USD", CA: "CAD", GB: "GBP", IE: "EUR", FR: "EUR", DE: "EUR", IT: "EUR", NL: "EUR", BE: "EUR", AT: "EUR", FI: "EUR", GR: "EUR", LU: "EUR", SK: "EUR", SI: "EUR", EE: "EUR", LV: "EUR", LT: "EUR", HR: "EUR", MT: "EUR", CY: "EUR", CH: "CHF", SE: "SEK", NO: "NOK", DK: "DKK", PL: "PLN", CZ: "CZK", HU: "HUF", RO: "RON", AU: "AUD", NZ: "NZD", IN: "INR", PH: "PHP", ZA: "ZAR", NG: "NGN", KE: "KES", JP: "JPY", IL: "ILS", AE: "AED", SA: "SAR", TR: "TRY", AO: "AOA", MZ: "MZN" };
+const moneda = () => MONEDAS[config?.pais || perfil?.pais || (perfil?.provincia ? "AR" : "")] || (idioma === "es-AR" ? "ARS" : "USD");
+const pesos = n => { try { return (+n || 0).toLocaleString(LOC, { style: "currency", currency: moneda(), maximumFractionDigits: ["ARS", "CLP", "COP", "PYG", "JPY", "HUF"].includes(moneda()) ? 0 : 2 }); } catch { return String(Math.round(+n || 0)); } };
 const ms = t => t?.toMillis ? t.toMillis() : typeof t === "number" ? t : Date.now();
 const catDe = it => CATS.includes(it.categoria) ? it.categoria : "Otros";
 const hace = t => { const d = Math.floor((Date.now() - ms(t)) / DIA); return d <= 0 ? "hoy" : d === 1 ? "ayer" : `hace ${d} días`; };
@@ -1427,8 +1434,7 @@ const CONTACTO_PRIVACIDAD = "";   // mail donde la gente puede pedir ver o borra
 // Ubicación para todo el mundo: país → provincia/estado/región → barrio o zona.
 let REGIONES = null;
 const cargarRegiones = () => REGIONES ? Promise.resolve(REGIONES) : fetch("datos/regiones.json").then(r => r.json()).then(d => (REGIONES = d)).catch(() => (REGIONES = { AR: PROVINCIAS }));
-const nombrePais = c => { try { return new Intl.DisplayNames([idiomaUI()], { type: "region" }).of(c) || c; } catch { return c; } };
-const idiomaUI = () => (document.documentElement.lang || "es").slice(0, 2);
+const nombrePais = c => { try { return new Intl.DisplayNames([LOC], { type: "region" }).of(c) || c; } catch { return c; } };
 const PAISES = ["AD","AE","AF","AG","AI","AL","AM","AO","AQ","AR","AS","AT","AU","AW","AX","AZ","BA","BB","BD","BE","BF","BG","BH","BI","BJ","BL","BM","BN","BO","BQ","BR","BS","BT","BV","BW","BY","BZ","CA","CC","CD","CF","CG","CH","CI","CK","CL","CM","CN","CO","CR","CU","CV","CW","CX","CY","CZ","DE","DJ","DK","DM","DO","DZ","EC","EE","EG","EH","ER","ES","ET","FI","FJ","FK","FM","FO","FR","GA","GB","GD","GE","GF","GG","GH","GI","GL","GM","GN","GP","GQ","GR","GS","GT","GU","GW","GY","HK","HM","HN","HR","HT","HU","ID","IE","IL","IM","IN","IO","IQ","IR","IS","IT","JE","JM","JO","JP","KE","KG","KH","KI","KM","KN","KP","KR","KW","KY","KZ","LA","LB","LC","LI","LK","LR","LS","LT","LU","LV","LY","MA","MC","MD","ME","MF","MG","MH","MK","ML","MM","MN","MO","MP","MQ","MR","MS","MT","MU","MV","MW","MX","MY","MZ","NA","NC","NE","NF","NG","NI","NL","NO","NP","NR","NU","NZ","OM","PA","PE","PF","PG","PH","PK","PL","PM","PN","PR","PS","PT","PW","PY","QA","RE","RO","RS","RU","RW","SA","SB","SC","SD","SE","SG","SH","SI","SJ","SK","SL","SM","SN","SO","SR","SS","ST","SV","SX","SY","SZ","TC","TD","TF","TG","TH","TJ","TK","TL","TM","TN","TO","TR","TT","TV","TW","TZ","UA","UG","UM","US","UY","UZ","VA","VC","VE","VG","VI","VN","VU","WF","WS","XK","YE","YT","ZA","ZM","ZW"];
 // el país más probable, por el idioma y la zona horaria del celular
 function paisProbable() {
@@ -1438,7 +1444,7 @@ function paisProbable() {
   const k = Object.keys(TZ).find(k => tz.startsWith(k)); return k ? TZ[k] : "";
 }
 function opcionesPais(sel) {
-  const lista = PAISES.map(c => [c, nombrePais(c)]).sort((a, b) => a[1].localeCompare(b[1], idiomaUI()));
+  const lista = PAISES.map(c => [c, nombrePais(c)]).sort((a, b) => a[1].localeCompare(b[1], LOC));
   return `<option value="">Elegí tu país</option>` + lista.map(([c, n]) => `<option value="${c}"${c === sel ? " selected" : ""}>${esc(n)}</option>`).join("");
 }
 function camposPerfil(p) {
@@ -1975,7 +1981,7 @@ function renderCasa() {
   if (document.activeElement !== inp) inp.value = config.nombre || "";
   const soyAdmin = config.creador === user?.uid;
   $("#miembrosTit").textContent = `Quiénes están en la casa (${miembros.length})`;
-  const fechaCorta = t => ms(t) ? new Date(ms(t)).toLocaleDateString("es-AR", { day: "numeric", month: "short" }) : "";
+  const fechaCorta = t => ms(t) ? new Date(ms(t)).toLocaleDateString(LOC, { day: "numeric", month: "short" }) : "";
   const usado = m => { const t = m.id === user.uid ? Date.now() : ms(m.visto); if (!t) return ""; const d = Math.floor((Date.now() - t) / DIA); return d <= 0 ? "usó Kai hoy" : d === 1 ? "usó Kai ayer" : `usó Kai hace ${d} días`; };
   $("#miembros").innerHTML = miembros.map(m => `
     <div class="member"><span class="avatar" aria-hidden="true">${esc((m.nombre || "?").trim()[0] || "?").toUpperCase()}</span><div><span class="row-name">${esc(m.nombre || "Sin nombre")}${m.id === user.uid ? " (vos)" : ""}</span>
@@ -2255,10 +2261,10 @@ function textoLista() {
 /* ---------- gastos: solo compras de comida y de la casa en súper, verdulería y carnicería ---------- */
 const COMERCIOS = ["Supermercado", "Verdulería", "Carnicería", "Almacén"];
 const esGasto = c => c.tipo === "gasto";
-const corto = n => n >= 1e6 ? "$" + (n / 1e6).toLocaleString("es-AR", { maximumFractionDigits: 1 }) + "M" : n >= 1e3 ? "$" + Math.round(n / 1e3) + "k" : "$" + Math.round(n);
+const corto = n => n >= 1e6 ? "$" + (n / 1e6).toLocaleString(LOC, { maximumFractionDigits: 1 }) + "M" : n >= 1e3 ? "$" + Math.round(n / 1e3) + "k" : "$" + Math.round(n);
 const comercioDe = c => esGasto(c) ? c.rubro : (COMERCIOS.includes(c.comercio) ? c.comercio : "Supermercado");
 const cuenta = c => !esGasto(c) || COMERCIOS.includes(c.rubro);   // los gastos viejos de otros rubros (luz, alquiler) ya no se cuentan
-const fechaCorta = t => new Date(ms(t)).toLocaleDateString("es-AR", { weekday: "short", day: "numeric", month: "short" });
+const fechaCorta = t => new Date(ms(t)).toLocaleDateString(LOC, { weekday: "short", day: "numeric", month: "short" });
 let borrarCompraId = null;
 
 function renderGastos() {
@@ -2276,7 +2282,7 @@ function renderGastos() {
   const diasMes = new Date(ahora.getFullYear(), ahora.getMonth() + 1, 0).getDate();
   const proy = esteMes / ahora.getDate() * diasMes;
   const max = Math.max(...meses.map(m => m.total), pres, 1);
-  const nombreMes = d => d.toLocaleDateString("es-AR", { month: "short" }).replace(".", "");
+  const nombreMes = d => d.toLocaleDateString(LOC, { month: "short" }).replace(".", "");
 
   const delMes = validas.filter(c => claveMes(new Date(ms(c.fecha))) === claveMes(ahora));
   const ticket = delMes.length ? esteMes / delMes.length : 0;
@@ -2292,7 +2298,7 @@ function renderGastos() {
 
   $("#gastos").innerHTML = `
     <div class="panel budget">
-      <div class="sub">Comida y casa en ${ahora.toLocaleDateString("es-AR", { month: "long" })}</div>
+      <div class="sub">Comida y casa en ${ahora.toLocaleDateString(LOC, { month: "long" })}</div>
       <div class="big">${pesos(esteMes)}</div>
       <div class="split"><span>${delMes.length} compra${delMes.length === 1 ? "" : "s"}</span>${delMes.length ? `<span>Promedio ${pesos(ticket)} por compra</span>` : ""}${varMes != null ? `<span class="${varMes > 0 ? "sube" : "baja"}">${varMes > 0 ? "▲" : "▼"} ${Math.abs(Math.round(varMes))}% vs ${nombreMes(meses[4].d)}</span>` : ""}</div>
       ${pres ? `<div class="meter"><i class="${esteMes > pres ? "over" : ""}" style="width:${pct}%"></i></div>
@@ -3702,7 +3708,7 @@ function renderExtras() {
   if (cargado && recetasCargadas) sugerirDelDia();
   partes.push(htmlRacha());
   if (new Date().getDate() <= 5 && movs.some(m => { const d = new Date(ms(m.ts)), h = new Date(); h.setDate(1); h.setMonth(h.getMonth() - 1); return d.getMonth() === h.getMonth(); }) && lsGet("mesVisto:" + casaId) !== String(new Date().getMonth()))
-    partes.push(`<button class="aviso info" data-resumenmes="1" onclick="localStorage.setItem('mesVisto:${casaId}','${new Date().getMonth()}')"><span><b>Tu ${new Date(new Date().setMonth(new Date().getMonth() - 1)).toLocaleDateString("es-AR", { month: "long" })} en Kai</b> · el resumen del mes</span><span>Ver →</span></button>`);
+    partes.push(`<button class="aviso info" data-resumenmes="1" onclick="localStorage.setItem('mesVisto:${casaId}','${new Date().getMonth()}')"><span><b>Tu ${new Date(new Date().setMonth(new Date().getMonth() - 1)).toLocaleDateString(LOC, { month: "long" })} en Kai</b> · el resumen del mes</span><span>Ver →</span></button>`);
   const pq = preguntaHoy();
   if (pq) partes.push(`<div class="preg-dia"><div class="preg-top"><small>Pregunta del día</small><small>1 toque</small></div>
     <h4>¿Queda ${esc(pq.it.nombre.toLowerCase())}?</h4>
@@ -4289,6 +4295,9 @@ $("#dlgRepaso").addEventListener("click", e => {
   else if ("repasolista" in b.dataset) { $("#dlgRepaso").close(); tab = "lista"; render(); window.scrollTo(0, 0); }
 });
 
+/* ---------- idioma ---------- */
+{ const sel = $("#selIdioma"); sel.innerHTML = IDIOMAS.map(([k, n]) => `<option value="${k}"${k === idioma ? " selected" : ""}>${n}</option>`).join(""); sel.onchange = () => cambiarIdioma(sel.value); }
+
 /* ---------- app: los botones flotantes siempre arriba de las pestañas y el banner ---------- */
 function anclarFlotantes() {
   const nav = document.querySelector("nav.tabs"); if (!nav || nav.hidden || !nav.offsetHeight) return;
@@ -4397,7 +4406,7 @@ $("#btnExportar").onclick = () => {
   const filas = [["Producto", "Categoría", "Ubicación", "Cantidad", "Unidad", "Mínimo", "Estado", "En la lista", "Vence", "Última vez que se anotó", "Quién"]];
   const est = { ok: "Hay", bajo: "Queda poco", agotado: "No hay" };
   for (const it of [...items].sort((a, b) => (a.categoria || "").localeCompare(b.categoria || "", "es") || a.nombre.localeCompare(b.nombre, "es")))
-    filas.push([it.nombre, it.categoria || "", it.ubicacion || "", String(cantVista(it)).replace(".", ","), it.unidad || "", String(num(it.minimo)).replace(".", ","), est[estado(it)], enLista(it) ? "Sí" : "No", it.vence || "", ms(it.actualizado) ? new Date(ms(it.actualizado)).toLocaleDateString("es-AR") : "", it.por || ""]);
+    filas.push([it.nombre, it.categoria || "", it.ubicacion || "", String(cantVista(it)).replace(".", ","), it.unidad || "", String(num(it.minimo)).replace(".", ","), est[estado(it)], enLista(it) ? "Sí" : "No", it.vence || "", ms(it.actualizado) ? new Date(ms(it.actualizado)).toLocaleDateString(LOC) : "", it.por || ""]);
   const csv = "\ufeff" + filas.map(f => f.map(v => `"${String(v ?? "").replace(/"/g, '""')}"`).join(";")).join("\r\n");
   const a = document.createElement("a");
   a.href = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
@@ -4711,7 +4720,7 @@ async function menuIA(boton) {
     const cands = RECETAS.filter(paraMenu).map(r => { const e = evaluar(r, null, hist); return { r, e }; })
       .sort((a, b) => a.e.faltan.length - b.e.faltan.length).slice(0, 140);
     const lista = cands.map(({ r, e }) => `${r.id} | ${r.n} | ${r.t} min${(r.tags || []).includes("gourmet") ? " | para lucirse" : ""}${e.faltan.length ? ` | falta: ${e.faltan.map(f => f.ing.nombre.toLowerCase()).join(", ")}` : " | tienen todo"}${e.fav ? " | favorita" : ""}`).join("\n");
-    const dias = Array.from({ length: 7 }, (_, d) => { const f = new Date(Date.now() + d * DIA); return d === 0 ? "hoy" : f.toLocaleDateString("es-AR", { weekday: "long" }); });
+    const dias = Array.from({ length: 7 }, (_, d) => { const f = new Date(Date.now() + d * DIA); return d === 0 ? "hoy" : f.toLocaleDateString(LOC, { weekday: "long" }); });
     const hechas = [...hist.entries()].filter(([, h]) => (Date.now() - h.ult) / DIA < 7).map(([n]) => n);
     const prompt = `Sos un cocinero argentino que arma el menú semanal de una familia. Tenés que elegir una comida principal para cada uno de estos días: ${dias.join(", ")}.
 Lo que hay en la casa:
@@ -5223,7 +5232,7 @@ function datosMes(off = 1) {
   const nRecetas = new Set(ms_.filter(m => m.receta).map(m => m.receta + diaDe(ms(m.ts)))).size;
   const top = [...usados.entries()].sort((a, b) => b[1].n - a[1].n).slice(0, 3);
   const estrella = [...quien.entries()].sort((a, b) => b[1] - a[1])[0];
-  const mes = ini.toLocaleDateString("es-AR", { month: "long" });
+  const mes = ini.toLocaleDateString(LOC, { month: "long" });
   return { mes, anio: ini.getFullYear(), dias: dias.size, nRecetas, recetaTop: [...recetas.entries()].sort((a, b) => b[1] - a[1])[0]?.[0], comprados, aprovechados, top, estrella, total: ms_.length };
 }
 function abrirResumenMes(off = 1) {
@@ -5353,7 +5362,7 @@ function renderLogros() {
     <div class="logros-top"><span>${hechos} de ${LOGROS.length} logros</span><button class="linkbtn" data-compartirlogros>Compartir</button></div>
     <div class="logros-grid">${LOGROS.map(l => `<div class="logro ${ya[l.id] ? "si" : ""}" title="${esc(l.d)}">
       <span class="logro-ico" aria-hidden="true">${ya[l.id] ? "★" : "☆"}</span>
-      <b>${esc(l.t)}</b><small>${ya[l.id] ? `Logrado ${new Date(ms(ya[l.id])).toLocaleDateString("es-AR", { day: "numeric", month: "short" })}` : esc(l.d)}</small>
+      <b>${esc(l.t)}</b><small>${ya[l.id] ? `Logrado ${new Date(ms(ya[l.id])).toLocaleDateString(LOC, { day: "numeric", month: "short" })}` : esc(l.d)}</small>
     </div>`).join("")}</div>`;
 }
 
@@ -5542,7 +5551,7 @@ function procesarTexto(texto) {
 }
 function arrancarReco() {
   reco = new SR();
-  reco.lang = "es-AR"; reco.interimResults = true; reco.maxAlternatives = 1; reco.continuous = true;
+  reco.lang = LOC; reco.interimResults = true; reco.maxAlternatives = 1; reco.continuous = true;
   reco.onresult = e => {
     vozParcial = "";
     for (let i = e.resultIndex ?? 0; i < e.results.length; i++) {
