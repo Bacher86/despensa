@@ -14,7 +14,7 @@ jobs:
     steps:
       - name: Probar Gemini por Firebase AI Logic
         run: |
-          for m in gemini-flash-latest gemini-2.5-flash gemini-2.0-flash; do
+          for m in gemini-3.8-flash gemini-flash-latest gemini-3.8-flash-lite gemini-flash-lite-latest; do
             echo "== $m"
             curl -s -X POST "https://firebasevertexai.googleapis.com/v1beta/projects/casa-48f64/models/$m:generateContent" \
               -H "Content-Type: application/json" -H "x-goog-api-key: AIzaSyDg0svGUiA37wOkrs31ROHMfx-OieBG6Xo" \
