@@ -2845,9 +2845,9 @@ const RECAPTCHA_KEY = "";
 const RECAPTCHA_TIPO = "v3";
 // La IA (foto de la heladera, ticket con IA, ideas) funciona con Firebase AI Logic activado en la consola.
 // App Check es opcional. Mientras se prueba, la ven solo los admins; con IA_PUBLICA = true la ven todos.
-const IA_PUBLICA = false;
+const IA_PUBLICA = true;   // AI Logic activado (Gemini Developer API)
 const iaOn = () => !!RECAPTCHA_KEY || IA_PUBLICA || ADMINS.includes((user?.email || "").toLowerCase());
-const MODELOS_IA = ["gemini-flash-latest", "gemini-2.5-flash", "gemini-2.0-flash"];
+const MODELOS_IA = ["gemini-3.8-flash", "gemini-flash-latest", "gemini-flash-lite-latest"];   // si uno no está o está saturado, se prueba el siguiente
 const FB = "https://www.gstatic.com/firebasejs/13.0.0/";
 let iaListo = null;
 
@@ -2934,7 +2934,7 @@ $("#fotoInput").addEventListener("change", async e => {
     let resp, ultimoError;
     for (const mdl of modelos) {
       try { resp = await conTiempo(mdl.generateContent([promptFoto(), { inlineData: { data: img.data, mimeType: "image/jpeg" } }]), 45000); break; }
-      catch (er) { ultimoError = er; if (!/not.?found|404|not supported|unknown model/i.test(String(er?.message))) break; }
+      catch (er) { ultimoError = er; if (!/not.?found|404|not supported|unknown model|high demand|overloaded|unavailable|503|500|429|resource.?exhausted|timeout|tard/i.test(String(er?.message))) break; }
     }
     if (!resp) throw ultimoError;
     const j = leerJSON(resp.response.text());
@@ -4707,7 +4707,7 @@ async function pedirIA(prompt, temperatura = 0.7) {
   let resp, ultimo;
   for (const m of modelos) {
     try { resp = await conTiempo(m.generateContent({ contents: [{ role: "user", parts: [{ text: prompt }] }], generationConfig: { responseMimeType: "application/json", temperature: temperatura } }), 60000); break; }
-    catch (er) { ultimo = er; if (!/not.?found|404|not supported|unknown model/i.test(String(er?.message))) break; }
+    catch (er) { ultimo = er; if (!/not.?found|404|not supported|unknown model|high demand|overloaded|unavailable|503|500|429|resource.?exhausted|timeout|tard/i.test(String(er?.message))) break; }
   }
   if (!resp) throw ultimo;
   return leerJSON(resp.response.text());
@@ -4966,17 +4966,19 @@ function emparejar(desc) {
 // con la IA activada, Gemini lee el ticket de la foto (mucho mejor con fotos movidas o tickets gastados)
 async function leerTicketIA(file) {
   const modelos = await prepararIA(), img = await fotoABase64(file);
-  const prompt = `Es la foto de un ticket de supermercado de Argentina. Leé cada producto comprado.
-- Los precios usan punto para miles y coma para decimales (1.234,56).
+  const ar = (config.pais || perfil.pais || "AR") === "AR";
+  const prompt = `Es la foto de un ticket de supermercado${ar ? " de Argentina" : ` (país: ${config.pais || perfil.pais})`}. Leé cada producto comprado.
+- ${ar ? "Los precios usan punto para miles y coma para decimales (1.234,56)." : "Interpretá los separadores de miles y decimales según el formato del país."}
 - La cantidad puede estar en un renglón aparte, arriba o abajo del producto ("2 x 1.390,00", "0,765 kg x 4.999,00").
 - Si hay un descuento (renglón con monto negativo, "Dto", "Promo", "Bonif"), restáselo al producto que corresponde.
 - No incluyas subtotal, total, IVA, impuestos, medios de pago, vuelto ni datos del comercio.
-- "desc" es el texto tal cual está en el ticket; "nombre" es cómo lo llamaría una persona en Argentina, sin tamaño ni envase (ej: "GALL OREO X118G" -> "Galletitas Oreo").
+- La alícuota de IVA entre paréntesis ("(21,00)", "(10,50)") no es un precio. El código de barras tampoco.
+- "desc" es el texto tal cual está en el ticket; "nombre" es cómo lo llamaría una persona ${ar ? "en Argentina" : `en el idioma "${LOC}"`}, sin marca, tamaño ni envase (ej: "GALL OREO X118G" -> "Galletitas Oreo").
 Respondé solo este JSON: {"comercio":"Coto","total":12345.67,"productos":[{"desc":"...","nombre":"...","cantidad":1,"kg":false,"importe":1234.5}]}`;
   let resp, ultimo;
   for (const m of modelos) {
     try { resp = await conTiempo(m.generateContent([prompt, { inlineData: { data: img.data, mimeType: "image/jpeg" } }]), 45000); break; }
-    catch (er) { ultimo = er; if (!/not.?found|404|not supported|unknown model/i.test(String(er?.message))) break; }
+    catch (er) { ultimo = er; if (!/not.?found|404|not supported|unknown model|high demand|overloaded|unavailable|503|500|429|resource.?exhausted|timeout|tard/i.test(String(er?.message))) break; }
   }
   if (!resp) throw ultimo;
   const j = leerJSON(resp.response.text());
