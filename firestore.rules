@@ -15,7 +15,7 @@ service cloud.firestore {
     function nuevo() { return request.resource.data; }
 
     // Versión de estas reglas: la app de administración la consulta para saber si están publicadas.
-    match /reglas/{version} { allow get: if version == 'v11'; }
+    match /reglas/{version} { allow get: if version == 'v12'; }
     match /admin/{doc} { allow read: if esAdmin(); }
 
     match /usuarios/{uid} {
@@ -24,7 +24,7 @@ service cloud.firestore {
       allow delete: if logueado() && request.auth.uid == uid;
       allow create, update: if logueado() && request.auth.uid == uid
         && texto(nuevo(), 'nombre', 60) && texto(nuevo(), 'apellido', 60)
-        && texto(nuevo(), 'provincia', 60) && texto(nuevo(), 'barrio', 80)
+        && texto(nuevo(), 'pais', 2) && texto(nuevo(), 'provincia', 80) && texto(nuevo(), 'barrio', 80)
         && (!('dni' in nuevo()) || nuevo().dni.matches('^[0-9]{7,8}$'));
     }
 

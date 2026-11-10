@@ -1229,9 +1229,9 @@ main h2::after{content:"";flex:1;min-width:28px;height:2px;background:var(--dash
 <dialog id="dlgPriv">
   <div class="sheet priv">
     <h3>Cómo usamos tus datos</h3>
-    <p><b>Qué te pedimos y para qué.</b> Nombre, apellido y DNI para identificar tu cuenta y que cada persona tenga una sola (así los descuentos llegan a gente real). Provincia y barrio para mostrarte promociones de comercios cerca tuyo. El mail, para entrar y recuperar la contraseña.</p>
+    <p><b>Qué te pedimos y para qué.</b> Nombre y apellido para identificar tu cuenta. País, provincia y barrio para mostrarte promociones de comercios cerca tuyo. El mail, para entrar y recuperar la contraseña.</p>
     <p><b>Tu despensa es de tu casa.</b> Lo que cargás lo ven solo las personas que invitaste a tu casa.</p>
-    <p><b>Los comercios nunca ven tus datos.</b> No ven tu nombre, tu DNI, tu mail ni tu despensa. Solo ven totales anónimos por barrio (por ejemplo, "en La Paternal muchas casas se están quedando sin aceite"), y solo cuando hay suficientes casas para que nadie pueda ser identificado.</p>
+    <p><b>Los comercios nunca ven tus datos.</b> No ven tu nombre, tu mail ni tu despensa. Solo ven totales anónimos por barrio (por ejemplo, "en La Paternal muchas casas se están quedando sin aceite"), y solo cuando hay suficientes casas para que nadie pueda ser identificado.</p>
     <p><b>Lo que compartís con la comunidad.</b> Cuando cargás un producto nuevo, su nombre y su categoría se suman al catálogo que ven todos, para que a otros les aparezca como sugerencia. No se comparte quién lo cargó ni cuánto tenés.</p>
     <p><b>Publicidad.</b> La app de Android muestra anuncios de Google AdMob y de comercios de tu zona. Google puede usar el identificador de publicidad del celular para mostrarlos; los comercios no reciben ningún dato tuyo.</p>
     <p><b>Tus derechos.</b> Podés ver y corregir tus datos en Más → Tus datos, y borrar tu cuenta cuando quieras desde Más → Eliminar mi cuenta. <span id="privContacto"></span></p>
@@ -1424,71 +1424,101 @@ const CONSENTIMIENTO = "2026-10";
 const CONTACTO_PRIVACIDAD = "";   // mail donde la gente puede pedir ver o borrar sus datos
 
 // Los mismos campos se usan en el registro, en "completá tus datos" y en "editar mis datos"
+// Ubicación para todo el mundo: país → provincia/estado/región → barrio o zona.
+let REGIONES = null;
+const cargarRegiones = () => REGIONES ? Promise.resolve(REGIONES) : fetch("datos/regiones.json").then(r => r.json()).then(d => (REGIONES = d)).catch(() => (REGIONES = { AR: PROVINCIAS }));
+const nombrePais = c => { try { return new Intl.DisplayNames([idiomaUI()], { type: "region" }).of(c) || c; } catch { return c; } };
+const idiomaUI = () => (document.documentElement.lang || "es").slice(0, 2);
+const PAISES = ["AD","AE","AF","AG","AI","AL","AM","AO","AQ","AR","AS","AT","AU","AW","AX","AZ","BA","BB","BD","BE","BF","BG","BH","BI","BJ","BL","BM","BN","BO","BQ","BR","BS","BT","BV","BW","BY","BZ","CA","CC","CD","CF","CG","CH","CI","CK","CL","CM","CN","CO","CR","CU","CV","CW","CX","CY","CZ","DE","DJ","DK","DM","DO","DZ","EC","EE","EG","EH","ER","ES","ET","FI","FJ","FK","FM","FO","FR","GA","GB","GD","GE","GF","GG","GH","GI","GL","GM","GN","GP","GQ","GR","GS","GT","GU","GW","GY","HK","HM","HN","HR","HT","HU","ID","IE","IL","IM","IN","IO","IQ","IR","IS","IT","JE","JM","JO","JP","KE","KG","KH","KI","KM","KN","KP","KR","KW","KY","KZ","LA","LB","LC","LI","LK","LR","LS","LT","LU","LV","LY","MA","MC","MD","ME","MF","MG","MH","MK","ML","MM","MN","MO","MP","MQ","MR","MS","MT","MU","MV","MW","MX","MY","MZ","NA","NC","NE","NF","NG","NI","NL","NO","NP","NR","NU","NZ","OM","PA","PE","PF","PG","PH","PK","PL","PM","PN","PR","PS","PT","PW","PY","QA","RE","RO","RS","RU","RW","SA","SB","SC","SD","SE","SG","SH","SI","SJ","SK","SL","SM","SN","SO","SR","SS","ST","SV","SX","SY","SZ","TC","TD","TF","TG","TH","TJ","TK","TL","TM","TN","TO","TR","TT","TV","TW","TZ","UA","UG","UM","US","UY","UZ","VA","VC","VE","VG","VI","VN","VU","WF","WS","XK","YE","YT","ZA","ZM","ZW"];
+// el país más probable, por el idioma y la zona horaria del celular
+function paisProbable() {
+  for (const l of navigator.languages || [navigator.language || ""]) { const m = /-([A-Z]{2})$/i.exec(l); if (m && PAISES.includes(m[1].toUpperCase())) return m[1].toUpperCase(); }
+  const tz = (() => { try { return Intl.DateTimeFormat().resolvedOptions().timeZone || ""; } catch { return ""; } })();
+  const TZ = { "America/Argentina": "AR", "America/Buenos_Aires": "AR", "America/Montevideo": "UY", "America/Asuncion": "PY", "America/Santiago": "CL", "America/Lima": "PE", "America/Bogota": "CO", "America/Mexico_City": "MX", "America/Caracas": "VE", "America/La_Paz": "BO", "America/Guayaquil": "EC", "America/Sao_Paulo": "BR", "Europe/Madrid": "ES", "Europe/Lisbon": "PT" };
+  const k = Object.keys(TZ).find(k => tz.startsWith(k)); return k ? TZ[k] : "";
+}
+function opcionesPais(sel) {
+  const lista = PAISES.map(c => [c, nombrePais(c)]).sort((a, b) => a[1].localeCompare(b[1], idiomaUI()));
+  return `<option value="">Elegí tu país</option>` + lista.map(([c, n]) => `<option value="${c}"${c === sel ? " selected" : ""}>${esc(n)}</option>`).join("");
+}
 function camposPerfil(p) {
   return `<div class="grid2">
       <label class="field"><span>Nombre</span><input id="${p}-nombre" autocomplete="given-name" maxlength="60"></label>
       <label class="field"><span>Apellido</span><input id="${p}-apellido" autocomplete="family-name" maxlength="60"></label>
     </div>
-    <label class="field"><span>DNI</span><input id="${p}-dni" inputmode="numeric" autocomplete="off" maxlength="11" placeholder="Solo números, sin puntos"></label>
-    <label class="field"><span>Provincia donde vivís</span><select id="${p}-provincia" data-prov="${p}">
-      <option value="">Elegí tu provincia</option>${PROVINCIAS.map(x => `<option>${x}</option>`).join("")}</select></label>
-    <label class="field"><span>Barrio</span>
+    <label class="field"><span>País</span><select id="${p}-pais" data-pais="${p}" autocomplete="country">${opcionesPais(paisProbable())}</select></label>
+    <label class="field"><span id="${p}-provLbl">Provincia, estado o región</span>
+      <select id="${p}-provincia" data-prov="${p}"><option value="">Elegí una opción</option></select>
+      <input id="${p}-provTxt" maxlength="80" autocomplete="address-level1" placeholder="Provincia, estado o región" hidden>
+    </label>
+    <label class="field"><span>Barrio, ciudad o zona</span>
       <select id="${p}-barrioSel" hidden><option value="">Elegí tu barrio</option>${BARRIOS_CABA.map(x => `<option>${x}</option>`).join("")}</select>
-      <input id="${p}-barrioTxt" maxlength="80" autocomplete="address-level3" placeholder="Barrio o localidad (ej: Ramos Mejía)">
+      <input id="${p}-barrioTxt" maxlength="80" autocomplete="address-level2" placeholder="Barrio, ciudad o zona">
     </label>`;
 }
-for (const [cont, p] of [["#regCampos", "r"], ["#perCampos", "p"], ["#ediCampos", "e"]]) $(cont).innerHTML = camposPerfil(p);
-document.addEventListener("change", e => {
-  const p = e.target.dataset?.prov; if (!p) return;
-  const caba = e.target.value === CABA;
+for (const [cont, p] of [["#regCampos", "r"], ["#perCampos", "p"], ["#ediCampos", "e"]]) { $(cont).innerHTML = camposPerfil(p); pintarRegiones(p); }
+// llena las regiones del país elegido (si el país no tiene lista, se escribe a mano)
+async function pintarRegiones(p, valor = "") {
+  const pais = $(`#${p}-pais`).value, sel = $(`#${p}-provincia`), txt = $(`#${p}-provTxt`);
+  const regs = pais ? (await cargarRegiones())[pais] || [] : [];
+  $(`#${p}-provLbl`).textContent = pais === "AR" ? "Provincia donde vivís" : "Provincia, estado o región";
+  sel.hidden = !regs.length && !!pais; txt.hidden = !sel.hidden;
+  sel.innerHTML = `<option value="">${pais ? "Elegí una opción" : "Primero elegí tu país"}</option>` + regs.map(x => `<option>${esc(x)}</option>`).join("");
+  sel.disabled = !pais;
+  if (valor) { if (regs.includes(valor)) sel.value = valor; else { sel.hidden = true; txt.hidden = false; txt.value = valor; } }
+  pintarBarrio(p);
+}
+function pintarBarrio(p) {
+  const caba = $(`#${p}-pais`).value === "AR" && $(`#${p}-provincia`).value === CABA;
   $(`#${p}-barrioSel`).hidden = !caba; $(`#${p}-barrioTxt`).hidden = caba;
+}
+document.addEventListener("change", e => {
+  const pp = e.target.dataset?.pais; if (pp) { pintarRegiones(pp); return; }
+  const p = e.target.dataset?.prov; if (p) pintarBarrio(p);
 });
 const capitalizar = s => limpiar(s).toLowerCase().replace(/(^|[\s'-])(\p{L})/gu, (m, a, b) => a + b.toUpperCase());
 
 function leerPerfil(p) {
   const nombre = capitalizar($(`#${p}-nombre`).value), apellido = capitalizar($(`#${p}-apellido`).value);
-  const dni = $(`#${p}-dni`).value.replace(/\D/g, "");
-  const provincia = $(`#${p}-provincia`).value;
-  const barrio = provincia === CABA ? $(`#${p}-barrioSel`).value : capitalizar($(`#${p}-barrioTxt`).value);
+  const pais = $(`#${p}-pais`).value;
+  const provincia = $(`#${p}-provincia`).hidden ? capitalizar($(`#${p}-provTxt`).value) : $(`#${p}-provincia`).value;
+  const caba = pais === "AR" && provincia === CABA;
+  const barrio = caba ? $(`#${p}-barrioSel`).value : capitalizar($(`#${p}-barrioTxt`).value);
   if (!nombre) return { error: "Escribí tu nombre.", foco: `#${p}-nombre` };
   if (!apellido) return { error: "Escribí tu apellido.", foco: `#${p}-apellido` };
-  if (!/^\d{7,8}$/.test(dni)) return { error: "El DNI tiene que tener 7 u 8 números.", foco: `#${p}-dni` };
-  if (!provincia) return { error: "Elegí la provincia donde vivís.", foco: `#${p}-provincia` };
-  if (!barrio) return { error: "Elegí o escribí tu barrio.", foco: provincia === CABA ? `#${p}-barrioSel` : `#${p}-barrioTxt` };
-  return { datos: { nombre, apellido, dni, provincia, barrio } };
+  if (!pais) return { error: "Elegí el país donde vivís.", foco: `#${p}-pais` };
+  if (!provincia) return { error: "Elegí tu provincia, estado o región.", foco: $(`#${p}-provincia`).hidden ? `#${p}-provTxt` : `#${p}-provincia` };
+  if (!barrio) return { error: "Elegí o escribí tu barrio, ciudad o zona.", foco: caba ? `#${p}-barrioSel` : `#${p}-barrioTxt` };
+  return { datos: { nombre, apellido, pais, provincia, barrio } };
 }
 function llenarPerfil(p, d = {}) {
-  $(`#${p}-nombre`).value = d.nombre || ""; $(`#${p}-apellido`).value = d.apellido || ""; $(`#${p}-dni`).value = d.dni || "";
-  $(`#${p}-provincia`).value = d.provincia || "";
-  const caba = d.provincia === CABA;
-  $(`#${p}-barrioSel`).hidden = !caba; $(`#${p}-barrioTxt`).hidden = caba;
-  $(`#${p}-barrioSel`).value = caba ? d.barrio || "" : ""; $(`#${p}-barrioTxt`).value = caba ? "" : d.barrio || "";
+  $(`#${p}-nombre`).value = d.nombre || ""; $(`#${p}-apellido`).value = d.apellido || "";
+  const pais = d.pais || (d.provincia ? "AR" : paisProbable());   // los que se anotaron antes son de Argentina
+  $(`#${p}-pais`).value = pais;
+  pintarRegiones(p, d.provincia || "").then(() => {
+    const caba = pais === "AR" && d.provincia === CABA;
+    $(`#${p}-barrioSel`).value = caba ? d.barrio || "" : ""; $(`#${p}-barrioTxt`).value = caba ? "" : d.barrio || "";
+  });
 }
-const perfilCompleto = d => !!(d && d.nombre && d.apellido && d.dni && d.provincia && d.barrio);
+const perfilCompleto = d => !!(d && d.nombre && d.apellido && d.provincia && d.barrio);
 const hashDni = async dni => [...new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode("despensa-dni:" + dni)))].map(b => b.toString(16).padStart(2, "0")).join("");
 
-// Guarda el perfil. El DNI queda reservado (una cuenta por persona) sin que nadie pueda leerlo.
+// Guarda el perfil. (Ya no se pide el DNI: si alguien lo tenía cargado de antes, se borra.)
 async function guardarPerfil(datos, previo = {}) {
   const b = writeBatch(db);
-  const h = await hashDni(datos.dni);
-  if (previo.dni && previo.dni !== datos.dni) b.delete(doc(db, "dnis", await hashDni(previo.dni)));
-  b.set(doc(db, "dnis", h), { uid: user.uid, ts: serverTimestamp() });
   const extra = {};
+  if (previo.dni) { b.delete(doc(db, "dnis", await hashDni(previo.dni))); extra.dni = deleteField(); }
   if (!previo.consentimiento) extra.consentimiento = { version: CONSENTIMIENTO, fecha: serverTimestamp() };
   if (!previo.creado) extra.creado = serverTimestamp();
   const ref0 = refGuardada();
   if (!previo.creado && ref0 && ref0 !== user.uid.slice(0, 12)) extra.referidoPor = ref0;
   b.set(perfilRef(), { ...datos, email: user.email || "", ...extra }, { merge: true });
-  try { await b.commit(); }
-  catch (e) {
-    if (e.code === "permission-denied") throw { texto: "Ese DNI ya está registrado con otra cuenta. Si es tuyo, entrá con esa cuenta." };
-    throw e;
-  }
-  perfil = { ...perfil, ...datos, ...extra };
+  await b.commit();
+  perfil = { ...perfil, ...datos, ...extra }; delete perfil.dni;
   marcarPerfilLocal(user.uid);
   updateProfile(user, { displayName: `${datos.nombre} ${datos.apellido}` }).catch(() => {});
   // la casa queda ubicada en el barrio de quien la creó (para las promociones del barrio)
-  if (casaId && config.creador === user.uid) updateDoc(casaDoc(), { provincia: datos.provincia, barrio: datos.barrio }).catch(() => {});
+  if (casaId && config.creador === user.uid) updateDoc(casaDoc(), { pais: datos.pais, provincia: datos.provincia, barrio: datos.barrio }).catch(() => {});
 }
 const marcarPerfilLocal = uid => { try { localStorage.setItem("perfilOk:" + uid, "1"); localStorage.setItem("yaEntro", "1"); } catch {} };
 const perfilLocal = uid => { try { return localStorage.getItem("perfilOk:" + uid) === "1"; } catch { return false; } };
@@ -1653,7 +1683,7 @@ async function unirse(inv) {
 async function crearCasa(nombre) {
   const id = doc(collection(db, "hogar")).id;
   const b = writeBatch(db);
-  b.set(doc(db, "hogar", id), { nombre, creador: user.uid, creado: serverTimestamp(), provincia: perfil.provincia || "", barrio: perfil.barrio || "" });
+  b.set(doc(db, "hogar", id), { nombre, creador: user.uid, creado: serverTimestamp(), pais: perfil.pais || (perfil.provincia ? "AR" : ""), provincia: perfil.provincia || "", barrio: perfil.barrio || "" });
   b.set(doc(db, "hogar", id, "miembros", user.uid), { ...miembroDatos(), rol: "admin", desde: serverTimestamp() });
   b.set(perfilRef(), { casa: id }, { merge: true });
   try { await b.commit(); } catch (err) { mostrarOnb("No se pudo crear la casa: " + err.message); return; }
@@ -1742,7 +1772,7 @@ function renderCuenta() {
   revisarAdmin();
   $("#btnRecoWa").href = "https://wa.me/?text=" + encodeURIComponent(textoRecomendar());
   const p = perfil;
-  $("#cuenta").innerHTML = p.nombre ? `<b>${esc(p.nombre)} ${esc(p.apellido)}</b><br>DNI ••••${esc(String(p.dni || "").slice(-3))} · ${esc(p.barrio)}, ${esc(p.provincia)}<br>${esc(user.email || "")}`
+  $("#cuenta").innerHTML = p.nombre ? `<b>${esc(p.nombre)} ${esc(p.apellido)}</b><br>${[p.barrio, p.provincia, nombrePais(p.pais || "AR")].filter(Boolean).map(esc).join(", ")}<br>${esc(user.email || "")}`
     : `Conectado como ${esc(user.email || nombreUsuario())}`;
 }
 $("#btnEditarPerfil").onclick = () => { llenarPerfil("e", perfil); $("#ediErr").hidden = true; $("#dlgPerfil").showModal(); };
@@ -5648,9 +5678,11 @@ const hoyStr = () => new Date().toISOString().slice(0, 10);
 const normB = s => normal(s || "");
 function anunciosPara(esp) {
   const ahora = Date.now(), prov = normB(perfil.provincia || config.provincia), barrio = normB(perfil.barrio || config.barrio);
+  const pais = perfil.pais || config.pais || "AR";
   if (lsGet("adx:" + esp) === hoyStr()) return [];          // lo cerró hoy
   return ANUNCIOS.filter(a => (a.espacios || []).includes(esp)
     && (!a.desde || ms(a.desde) <= ahora) && (!a.hasta || ms(a.hasta) >= ahora)
+    && (!(a.paises ?? ["AR"]).length || (a.paises ?? ["AR"]).includes(pais))      // los anuncios viejos (sin país) son de Argentina
     && (!(a.provincias || []).length || a.provincias.some(p => normB(p) === prov))
     && (!(a.barrios || []).length || a.barrios.some(b => normB(b) === barrio))
     && (a.imagen || a.titulo));
