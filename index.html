@@ -401,6 +401,7 @@ details.compra .det div{display:flex;justify-content:space-between;gap:8px}
 nav.tabs{position:fixed;left:0;right:0;bottom:0;z-index:6;background:var(--surface);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom,0px)}
 nav.tabs .wrap{display:grid;grid-template-columns:repeat(4,1fr)}
 html.tr-carga body{visibility:hidden}
+.grecaptcha-badge{visibility:hidden}   /* el aviso de reCAPTCHA está en la política de privacidad */
 .sel-idioma{font:inherit;padding:8px 10px;border-radius:12px;border:1px solid var(--line);background:var(--surface);color:var(--ink);max-width:48%}
 /* app de Android: el banner de publicidad va fijo abajo, debajo de las pestañas */
 html.es-app{--sab:max(env(safe-area-inset-bottom,0px),var(--safe-area-inset-bottom,0px))}
@@ -2841,7 +2842,7 @@ $("#btnALista").onclick = async () => {
    Usa Gemini a través de Firebase AI Logic (se activa en la consola de Firebase).
    RECAPTCHA_KEY: la clave de App Check. Firebase la exige para usar la IA (ver README, parte 5).
    RECAPTCHA_TIPO: "v3" (reCAPTCHA v3, gratis y sin tarjeta) o "enterprise".  */
-const RECAPTCHA_KEY = "";
+const RECAPTCHA_KEY = "6Le_6BkuAAAAAJMZNEVDqmX3y3HQpTrbg-CjbaPf";   // reCAPTCHA v3 (App Check) para bacher86.github.io
 const RECAPTCHA_TIPO = "v3";
 // La IA (foto de la heladera, ticket con IA, ideas) funciona con Firebase AI Logic activado en la consola.
 // App Check es opcional. Mientras se prueba, la ven solo los admins; con IA_PUBLICA = true la ven todos.
