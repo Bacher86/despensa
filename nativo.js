@@ -19,7 +19,7 @@ const FONDO_MIN = 30 * 60e3;      // al volver a la app después de 30 min, cuen
 const lsG = (k, d = "") => { try { return localStorage.getItem("app:" + k) ?? d; } catch { return d; } };
 const lsS = (k, v) => { try { localStorage.setItem("app:" + k, String(v)); } catch {} };
 
-let listo = null, chico = null, bannerOn = false, deAviso = false, abriendo = false, alAvisoCb = null, enFondoDesde = 0;
+let listo = null, chico = null, bannerOn = false, tapado = false, deAviso = false, abriendo = false, alAvisoCb = null, enFondoDesde = 0;
 const q = new URLSearchParams(location.search);
 if (q.get("accion") || q.get("tab") || q.get("voz") || q.get("compartido")) deAviso = true;
 if (esApp) {
@@ -39,6 +39,7 @@ async function iniciar() {
     } catch {}
     A.addListener("bannerAdSizeChanged", s => {
       const h = Math.round(s?.height || 0);
+      if (tapado && !h) return;   // lo tapó un anuncio de un local: el lugar queda reservado
       document.documentElement.style.setProperty("--ad-h", h ? h + 4 + "px" : "0px");
       document.documentElement.classList.toggle("con-banner", h > 0);
     });
@@ -71,9 +72,16 @@ async function mostrarBanner() {
   catch (e) { bannerOn = false; console.warn("Banner:", e?.message || e); }
 }
 async function quitarBanner() {
-  if (!bannerOn) return; bannerOn = false;
+  if (!bannerOn) return; bannerOn = false; tapado = false;
   try { await P("AdMob").removeBanner(); } catch {}
   document.documentElement.style.setProperty("--ad-h", "0px"); document.documentElement.classList.remove("con-banner");
+}
+
+// Intercalar con los anuncios de los locales: mientras se ve uno, el banner de Google se esconde y el local ocupa su lugar.
+export const hayBanner = () => esApp && bannerOn && document.documentElement.classList.contains("con-banner");
+export async function tapaBanner(on) {
+  if (!bannerOn || tapado === !!on) return; tapado = !!on;
+  try { await (on ? P("AdMob").hideBanner() : P("AdMob").resumeBanner()); } catch {}
 }
 
 function puedeAbrir() {

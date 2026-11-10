@@ -409,7 +409,13 @@ html.con-banner body::after{content:"";position:fixed;left:0;right:0;bottom:0;he
 html.con-banner main{padding-bottom:calc(96px + var(--ad-h,0px) + var(--sab))}
 html.con-banner .fab{bottom:calc(84px + var(--ad-h,0px) + var(--sab))}
 html.con-banner .toast{bottom:calc(150px + var(--ad-h,0px) + var(--sab))}
-html.con-banner .ad-barra{bottom:calc(64px + var(--ad-h,0px) + var(--sab))}
+html.con-banner .ad-barra{bottom:var(--sab);height:var(--ad-h,0px);max-width:none;padding:0;z-index:7}
+html.con-banner .ad-barra .ad-card{height:100%;margin:0;border-radius:0;padding:14px 40px 4px 12px;gap:10px;box-shadow:0 -1px 0 var(--line)}
+html.con-banner .ad-barra .ad-card img{width:38px;height:38px;border-radius:8px}
+html.con-banner .ad-barra .ad-card .ad-tag{top:2px;left:12px;font-size:10px}
+html.con-banner .ad-barra .ad-txt b,html.con-banner .ad-barra .ad-txt span{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+html.con-banner .ad-barra .ad-card.solo-img img{width:100%;height:100%;max-height:none}
+html.con-banner .ad-barra .prog{bottom:2px}
 .tab{border:0;background:none;padding:12px 2px 14px;font-weight:700;color:var(--muted);position:relative;font-size:.86rem}
 .tab[aria-selected="true"]{color:var(--accent)}
 .tab[aria-selected="true"]::after{content:"";position:absolute;left:28%;right:28%;top:0;height:3px;border-radius:0 0 3px 3px;background:var(--accent)}
@@ -1281,7 +1287,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/13.0.0/firebas
 import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect, signInWithCredential, onAuthStateChanged, signOut, createUserWithEmailAndPassword, signInWithEmailAndPassword, sendPasswordResetEmail, updateProfile, deleteUser } from "https://www.gstatic.com/firebasejs/13.0.0/firebase-auth.js";
 import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager, collection, doc, getDoc, getDocs, onSnapshot, addDoc, updateDoc, deleteDoc, setDoc, increment, serverTimestamp, writeBatch, deleteField, arrayUnion, arrayRemove, query, where, orderBy, limit, Timestamp } from "https://www.gstatic.com/firebasejs/13.0.0/firebase-firestore.js";
 
-import { esApp, setChico, verConPremio, googleNativo, salirNativo, permisoAvisos, estadoAvisos, tokenAvisos, alAviso } from "./nativo.js";
+import { esApp, setChico, hayBanner, tapaBanner, verConPremio, googleNativo, salirNativo, permisoAvisos, estadoAvisos, tokenAvisos, alAviso } from "./nativo.js";
 import { GRUPOS, hogarDe, personas, adultoEq, textoHogar, tasaBase, baseDe as consumoBaseDe } from "./consumo.js";
 const firebaseConfig = {
   apiKey: "AIzaSyDg0svGUiA37wOkrs31ROHMfx-OieBG6Xo",
@@ -5671,20 +5677,31 @@ setInterval(() => {
 function pubTab() {
   if (!user || !casaId) return;
   if (tab === "lista") pintarEspacio("lista");
+  if (esApp) return;   // en la app, la barra se intercala con el banner de Google (cicloApp)
   // la barra aparece al cambiar de pestaña, como mucho cada 3 minutos, y se va sola
   if (Date.now() - adUltBarra > AD_BARRA_CADA && ANUNCIOS.length) { clearTimeout(adBarraT); adBarraT = setTimeout(mostrarBarra, 2500); }
 }
-function mostrarBarra() {
+function mostrarBarra(ms = AD_BARRA_MS) {
   const a = elegir(anunciosPara("barra"), "barra"), el = $("#adBarra");
-  if (!a || document.querySelector("dialog[open]")) return;
+  if (!a || document.querySelector("dialog[open]")) return false;
   adUltBarra = Date.now();
   el.innerHTML = htmlAnuncio(a, "barra", `<span class="prog"><i></i></span>`); contarVista(a, "barra");
+  if (esApp && hayBanner()) tapaBanner(true);
   requestAnimationFrame(() => el.classList.add("on"));
   const barra = el.querySelector(".prog i");
-  barra.animate([{ transform: "scaleX(1)" }, { transform: "scaleX(0)" }], { duration: AD_BARRA_MS, easing: "linear", fill: "forwards" });
-  clearTimeout(el._t); el._t = setTimeout(ocultarBarra, AD_BARRA_MS);
+  barra.animate([{ transform: "scaleX(1)" }, { transform: "scaleX(0)" }], { duration: ms, easing: "linear", fill: "forwards" });
+  clearTimeout(el._t); el._t = setTimeout(ocultarBarra, ms);
+  return true;
 }
-function ocultarBarra() { const el = $("#adBarra"); el.classList.remove("on"); clearTimeout(el._t); }
+function ocultarBarra() { const el = $("#adBarra"); el.classList.remove("on"); clearTimeout(el._t); if (esApp) tapaBanner(false); }
+// App de Android: el lugar de abajo intercala Google (40 s) y un local del barrio (12 s), si hay locales con anuncio para esta casa
+const APP_GOOGLE_MS = 40000, APP_LOCAL_MS = 12000;
+function cicloApp() {
+  let espera = APP_GOOGLE_MS;
+  if (user && casaId && !document.hidden && !soyChico() && anunciosPara("barra").length && mostrarBarra(APP_LOCAL_MS)) espera += APP_LOCAL_MS;
+  setTimeout(cicloApp, espera);
+}
+if (esApp) setTimeout(cicloApp, APP_GOOGLE_MS);
 function mostrarBienvenida() {
   if (lsGet("adhola") === hoyStr() || !$("#adHola").hidden) return;
   const a = elegir(anunciosPara("bienvenida"), "bienvenida");
