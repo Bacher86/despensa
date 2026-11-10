@@ -51,6 +51,7 @@ ol li{display:list-item;padding:0;background:none}
   <div class="cta"><b>Con lo que hay, ¿alcanza?</b><span>Kai te dice qué podés cocinar con lo que tenés en casa y te arma la lista con lo que falta.</span><a href="./?tab=cocinar">Probá Kai gratis</a></div>
 </div>
 <script type="module">
+import "./i18n.js";
 const $ = s => document.querySelector(s);
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const id = new URLSearchParams(location.search).get("id") || "";

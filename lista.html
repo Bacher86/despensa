@@ -55,6 +55,7 @@ label.it.ok b{text-decoration:line-through;color:var(--muted)}
   <div class="cta"><b>¿Querés una lista que se arme sola?</b><span class="sub">Kai sabe qué hay en tu casa y te avisa antes de que algo se termine.</span><a href="./">Probá Kai gratis</a></div>
 </div>
 <script type="module">
+import "./i18n.js";
 import { initializeApp } from "https://www.gstatic.com/firebasejs/13.0.0/firebase-app.js";
 import { initializeFirestore, doc, onSnapshot, updateDoc, deleteField } from "https://www.gstatic.com/firebasejs/13.0.0/firebase-firestore.js";
 const app = initializeApp({ apiKey: "AIzaSyDg0svGUiA37wOkrs31ROHMfx-OieBG6Xo", authDomain: "casa-48f64.firebaseapp.com", projectId: "casa-48f64", appId: "1:839069249046:web:a76ce8e1b2c6e15b920f37" });
